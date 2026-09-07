@@ -130,6 +130,26 @@ td.temp { font-size: 17px; font-weight: 600; }
 
 .tile .tname { font-size: 12px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
 .tile .ttemp { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .thandle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+}
+.tile .thandle::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  opacity: .55;
+}
+
 .tile .tmark {
   position: absolute;
   top: 3px;
@@ -448,7 +468,7 @@ const I18N = {
     hPlan: 'Κάτοψη καταστήματος',
     sPlan: 'Χρώμα ανά κατάσταση. Επιλέξτε μονάδα για λεπτομέρειες.',
     arrange: 'Διάταξη', arrangeDone: 'Τέλος',
-    arrangeHint: 'Σύρετε κάθε μονάδα στη θέση της μέσα στο κατάστημα.',
+    arrangeHint: 'Σύρετε κάθε μονάδα στη θέση της. Από τη γωνία αλλάζετε μέγεθος. Διπλό κλικ για μετονομασία.',
     planShape: 'Σχήμα στην κάτοψη',
     shapeCabinet: 'Βιτρίνα', shapeChiller: 'Ψυγείο', shapeRoom: 'Θάλαμος',
 
@@ -581,7 +601,7 @@ const I18N = {
     hPlan: 'Store layout',
     sPlan: 'Colour by status. Select a unit for details.',
     arrange: 'Arrange', arrangeDone: 'Done',
-    arrangeHint: 'Drag each unit to where it stands in the store.',
+    arrangeHint: 'Drag each unit into place. Drag a corner to resize. Double-click to rename.',
     planShape: 'Shape on the layout',
     shapeCabinet: 'Display cabinet', shapeChiller: 'Chiller', shapeRoom: 'Cold room',
 
@@ -1150,6 +1170,7 @@ function openUnit(unitId) {
     <div class="modal-head">
       <h2>${escapeHtml(L(unit.name))}</h2>
       <span class="badge ${s.status}">${statusLabel(s.status)}</span>
+      <button class="small no-print" onclick="openUnitForm('${unit.id}')">${t('edit')}</button>
       <button class="close" onclick="closeModal()" aria-label="${t('close')}">&times;</button>
     </div>
 
@@ -1206,10 +1227,24 @@ const PLAN_MARKS = { ok: '✓', warn: '!', alarm: '✕', stale: '?' };
 
 let arranging = false;
 
+/* Tiles stay large enough to read at a glance. */
+const PLAN_MIN_W = 8;
+const PLAN_MIN_H = 8;
+
 function planFor(unit, index) {
   const shape = PLAN_SHAPES[unit.plan_shape] || PLAN_SHAPES.chiller;
-  const placed = unit.plan && Number.isFinite(unit.plan.x);
-  if (placed) return { x: unit.plan.x, y: unit.plan.y, ...shape };
+  const p = unit.plan;
+
+  if (p && Number.isFinite(p.x)) {
+    return {
+      x: p.x,
+      y: p.y,
+      /* A unit keeps whatever size it was dragged to; the shape is only the
+         starting point. */
+      w: Number.isFinite(p.w) ? p.w : shape.w,
+      h: Number.isFinite(p.h) ? p.h : shape.h
+    };
+  }
 
   /* Units that have never been arranged flow into rows, so a freshly added
      freezer appears somewhere sensible instead of on top of another. */
@@ -1234,6 +1269,7 @@ function renderPlan(states) {
         <span class="tmark" aria-hidden="true">${PLAN_MARKS[s.status]}</span>
         <span class="tname">${escapeHtml(L(s.unit.name))}</span>
         ${s.last ? `<span class="ttemp">${s.last.temp_c.toFixed(1)}°</span>` : ''}
+        ${arranging ? '<span class="thandle" data-resize="1" aria-hidden="true"></span>' : ''}
       </div>`;
   }).join('');
 
@@ -1264,40 +1300,63 @@ function toggleArrange() {
 
     const area = plan.getBoundingClientRect();
     const box = tile.getBoundingClientRect();
+    const pct = (px, total) => (px / total) * 100;
+
     drag = {
       tile,
       unitId: tile.dataset.unit,
+      mode: e.target.dataset.resize ? 'resize' : 'move',
+      x: pct(box.left - area.left, area.width),
+      y: pct(box.top - area.top, area.height),
+      w: pct(box.width, area.width),
+      h: pct(box.height, area.height),
       /* Where inside the tile the pointer grabbed it, so it does not jump. */
-      offsetX: ((e.clientX - box.left) / area.width) * 100,
-      offsetY: ((e.clientY - box.top) / area.height) * 100,
-      w: (box.width / area.width) * 100,
-      h: (box.height / area.height) * 100
+      offsetX: pct(e.clientX - box.left, area.width),
+      offsetY: pct(e.clientY - box.top, area.height)
     };
+
     tile.classList.add('dragging');
     tile.setPointerCapture(e.pointerId);
+    e.preventDefault();
   });
 
   plan.addEventListener('pointermove', e => {
     if (!drag) return;
     const area = plan.getBoundingClientRect();
+    const atX = ((e.clientX - area.left) / area.width) * 100;
+    const atY = ((e.clientY - area.top) / area.height) * 100;
 
-    const x = clamp(((e.clientX - area.left) / area.width) * 100 - drag.offsetX, 0, 100 - drag.w);
-    const y = clamp(((e.clientY - area.top) / area.height) * 100 - drag.offsetY, 0, 100 - drag.h);
+    if (drag.mode === 'resize') {
+      drag.w = clamp(atX - drag.x, PLAN_MIN_W, 100 - drag.x);
+      drag.h = clamp(atY - drag.y, PLAN_MIN_H, 100 - drag.y);
+      drag.tile.style.width = drag.w + '%';
+      drag.tile.style.height = drag.h + '%';
+    } else {
+      drag.x = clamp(atX - drag.offsetX, 0, 100 - drag.w);
+      drag.y = clamp(atY - drag.offsetY, 0, 100 - drag.h);
+      drag.tile.style.left = drag.x + '%';
+      drag.tile.style.top = drag.y + '%';
+    }
 
-    drag.tile.style.left = x + '%';
-    drag.tile.style.top = y + '%';
-    drag.x = x;
-    drag.y = y;
+    drag.moved = true;
   });
 
   plan.addEventListener('pointerup', () => {
     if (!drag) return;
-    if (Number.isFinite(drag.x)) {
+
+    if (drag.moved) {
       const unit = units.find(u => u.id === drag.unitId);
-      if (unit) unit.plan = { x: round1(drag.x), y: round1(drag.y) };
+      if (unit) unit.plan = { x: round1(drag.x), y: round1(drag.y), w: round1(drag.w), h: round1(drag.h) };
     }
+
     drag.tile.classList.remove('dragging');
     drag = null;
+  });
+
+  /* Rename without leaving the plan. */
+  plan.addEventListener('dblclick', e => {
+    const tile = e.target.closest('.tile');
+    if (tile && arranging) openUnitForm(tile.dataset.unit);
   });
 
   /* Keyboard equivalent, so the plan is not mouse-only. */
@@ -1313,19 +1372,24 @@ function toggleArrange() {
 
     if (!arranging) return;
     const step = e.shiftKey ? 5 : 1;
-    const move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
-    if (!move) return;
+    const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!delta) return;
 
     e.preventDefault();
     const unit = units.find(u => u.id === tile.dataset.unit);
     if (!unit) return;
 
-    const i = units.indexOf(unit);
-    const pos = planFor(unit, i);
-    unit.plan = {
-      x: round1(clamp(pos.x + move[0], 0, 100 - pos.w)),
-      y: round1(clamp(pos.y + move[1], 0, 100 - pos.h))
-    };
+    const pos = planFor(unit, units.indexOf(unit));
+
+    /* Alt resizes, plain arrows move — the same two gestures the pointer has. */
+    unit.plan = e.altKey
+      ? { x: pos.x, y: pos.y,
+          w: round1(clamp(pos.w + delta[0], PLAN_MIN_W, 100 - pos.x)),
+          h: round1(clamp(pos.h + delta[1], PLAN_MIN_H, 100 - pos.y)) }
+      : { w: pos.w, h: pos.h,
+          x: round1(clamp(pos.x + delta[0], 0, 100 - pos.w)),
+          y: round1(clamp(pos.y + delta[1], 0, 100 - pos.h)) };
+
     render();
     document.querySelector(`.tile[data-unit="${unit.id}"]`).focus();
   });
@@ -1581,8 +1645,15 @@ function saveUnit(id) {
   }
 
   const existing = units.find(u => u.id === id);
-  if (existing) Object.assign(existing, draft);
-  else units.push({ id: 'u' + Date.now().toString(36), ...draft });
+  if (existing) {
+    /* Picking a different shape means asking for that shape's proportions, so
+       drop any size the tile was dragged to and keep only its position. */
+    const shapeChanged = existing.plan_shape !== draft.plan_shape;
+    Object.assign(existing, draft);
+    if (shapeChanged && existing.plan) existing.plan = { x: existing.plan.x, y: existing.plan.y };
+  } else {
+    units.push({ id: 'u' + Date.now().toString(36), ...draft });
+  }
 
   units = units.map(resolveLimits);
   saveUnits();

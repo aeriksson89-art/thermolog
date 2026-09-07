@@ -96,11 +96,16 @@ table.
   from green.
 - **Shape says what kind of installation it is**: a display cabinet runs long, a
   chiller is square, a cold room is a box.
-- **Arrange** switches to layout mode; drag units into position, or nudge a
-  selected tile with the arrow keys (hold Shift for larger steps). Positions are
-  saved when you leave layout mode, and the automatic refresh is suspended while
-  arranging so the plan cannot move under the pointer.
-- Selecting a tile opens that unit's full history.
+- **Arrange** switches to layout mode. Drag a unit to move it, drag its bottom
+  right corner to resize it, and double-click it to rename. By keyboard: arrow
+  keys move, Alt with arrow keys resizes, Shift takes larger steps. Positions
+  and sizes are saved when you leave layout mode, and the automatic refresh is
+  suspended while arranging so the plan cannot rebuild under the pointer.
+- The shape only sets a unit's starting proportions; once resized it keeps
+  whatever size it was given. Picking a different shape resets it to that
+  shape's proportions.
+- Selecting a tile opens that unit's full history, with an edit button for its
+  name, categories and sensor.
 
 A newly added unit is placed automatically until someone arranges it, so it
 never lands on top of another.
