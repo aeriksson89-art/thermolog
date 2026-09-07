@@ -83,6 +83,28 @@ be plain strings or `{ el, en }` objects for bilingual output.
 In demo mode corrective actions are kept in `localStorage` so the flow can be
 demonstrated without a backend.
 
+## Store layout
+
+The first thing on the page is a floor plan: each unit sits where it stands in
+the store, coloured by status and nothing else. Staff walking past should be
+able to tell in one glance which cabinet needs attention, without reading a
+table.
+
+- **Green / amber / red / grey** for OK, warning, alarm, no contact. Status is
+  never carried by colour alone — each tile also carries a mark (`✓ ! ✕ ?`), so
+  the display works for the roughly one man in twelve who cannot separate red
+  from green.
+- **Shape says what kind of installation it is**: a display cabinet runs long, a
+  chiller is square, a cold room is a box.
+- **Arrange** switches to layout mode; drag units into position, or nudge a
+  selected tile with the arrow keys (hold Shift for larger steps). Positions are
+  saved when you leave layout mode, and the automatic refresh is suspended while
+  arranging so the plan cannot move under the pointer.
+- Selecting a tile opens that unit's full history.
+
+A newly added unit is placed automatically until someone arranges it, so it
+never lands on top of another.
+
 ## Adding a unit
 
 Five steps, and only one of them happens in this app:

@@ -93,6 +93,68 @@ td.temp { font-size: 17px; font-weight: 600; }
 .badge.stale { background: var(--stale-bg); color: var(--stale); }
 .badge.due { background: var(--warn-bg); color: var(--warn); }
 
+/* Store layout: status at a glance, the way a floor plan is read */
+.plan {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background-color: #fbfcfd;
+  background-image:
+    linear-gradient(rgba(102,112,133,.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102,112,133,.09) 1px, transparent 1px);
+  background-size: 44px 44px;
+  overflow: hidden;
+  touch-action: none;
+}
+.plan.editing { background-color: #f7f9fc; }
+
+.tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 2px solid;
+  border-radius: 6px;
+  overflow: hidden;
+  text-align: center;
+  cursor: pointer;
+}
+.plan.editing .tile { cursor: grab; }
+.plan.editing .tile.dragging { cursor: grabbing; opacity: .85; }
+.tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.tile .tname { font-size: 12px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.tile .ttemp { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .tmark {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tile.ok    { background: var(--ok-bg);    border-color: var(--ok);    color: var(--ok); }
+.tile.warn  { background: var(--warn-bg);  border-color: var(--warn);  color: var(--warn); }
+.tile.alarm { background: var(--alarm-bg); border-color: var(--alarm); color: var(--alarm); }
+.tile.stale { background: var(--stale-bg); border-color: var(--stale); color: var(--stale); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.legend i {
+  width: 13px; height: 13px; border-radius: 3px;
+  border: 2px solid; font-style: normal;
+}
+.legend i.ok    { background: var(--ok-bg);    border-color: var(--ok); }
+.legend i.warn  { background: var(--warn-bg);  border-color: var(--warn); }
+.legend i.alarm { background: var(--alarm-bg); border-color: var(--alarm); }
+.legend i.stale { background: var(--stale-bg); border-color: var(--stale); }
+
 .modal { display: none; position: fixed; inset: 0; background: rgba(15,18,22,.5); padding: 20px; overflow-y: auto; }
 .modal.show { display: block; }
 .modal-content { background: var(--card); border-radius: 10px; padding: 22px; max-width: 660px; margin: 40px auto; }
@@ -173,6 +235,17 @@ textarea { min-height: 80px; resize: vertical; }
   <h2 id="hAlarms"></h2>
   <div class="section-sub" id="sAlarms"></div>
   <div id="alarmList"></div>
+</div>
+
+<div class="card">
+  <h2 id="hPlan"></h2>
+  <div class="section-sub" id="sPlan"></div>
+  <div class="plan" id="plan"></div>
+  <div class="legend" id="planLegend"></div>
+  <div class="toolbar no-print" style="margin-bottom:0">
+    <button onclick="toggleArrange()" id="btnArrange"></button>
+    <span class="updated" id="arrangeHint"></span>
+  </div>
 </div>
 
 <div class="card">
@@ -372,6 +445,13 @@ const I18N = {
     sign1: 'Υπεύθυνος ασφάλειας τροφίμων – υπογραφή και ημερομηνία',
     sign2: 'Θεώρηση – υπογραφή και ημερομηνία',
 
+    hPlan: 'Κάτοψη καταστήματος',
+    sPlan: 'Χρώμα ανά κατάσταση. Επιλέξτε μονάδα για λεπτομέρειες.',
+    arrange: 'Διάταξη', arrangeDone: 'Τέλος',
+    arrangeHint: 'Σύρετε κάθε μονάδα στη θέση της μέσα στο κατάστημα.',
+    planShape: 'Σχήμα στην κάτοψη',
+    shapeCabinet: 'Βιτρίνα', shapeChiller: 'Ψυγείο', shapeRoom: 'Θάλαμος',
+
     hCategories: 'Κατηγορίες προϊόντων',
     sCategories: 'Τα κρίσιμα όρια ορίζονται εδώ μία φορά και κληρονομούνται από κάθε μονάδα. Μεταβολή της νομοθεσίας διορθώνεται σε ένα σημείο, όχι σε κάθε ψυγείο.',
     addCategory: 'Προσθήκη κατηγορίας', editCategory: 'Επεξεργασία κατηγορίας',
@@ -497,6 +577,13 @@ const I18N = {
     noDeviationsPeriod: 'No deviations in the reporting period.',
     sign1: 'Food safety manager – signature and date',
     sign2: 'Verified by – signature and date',
+
+    hPlan: 'Store layout',
+    sPlan: 'Colour by status. Select a unit for details.',
+    arrange: 'Arrange', arrangeDone: 'Done',
+    arrangeHint: 'Drag each unit to where it stands in the store.',
+    planShape: 'Shape on the layout',
+    shapeCabinet: 'Display cabinet', shapeChiller: 'Chiller', shapeRoom: 'Cold room',
 
     hCategories: 'Product categories',
     sCategories: 'Critical limits are defined here once and inherited by every unit. A change in the law is corrected in one place, not in every cabinet.',
@@ -859,6 +946,7 @@ function render() {
   renderChrome();
   renderKpis(states);
   renderAlarms(states);
+  renderPlan(states);
   renderUnits(states);
   renderDeviations(states);
   renderSensors(states);
@@ -889,6 +977,7 @@ function renderChrome() {
   setText('hUnits', 'hUnits');   setText('sUnits', 'sUnits');
   setText('hDeviations', 'hDeviations'); setText('sDeviations', 'sDeviations');
   setText('hSensors', 'hSensors'); setText('sSensors', 'sSensors');
+  setText('hPlan', 'hPlan'); setText('sPlan', 'sPlan');
   setText('hCategories', 'hCategories'); setText('sCategories', 'sCategories');
   setText('btnAddCategory', 'addCategory');
   setText('btnAddUnit', 'addUnit');
@@ -1098,6 +1187,154 @@ function openUnit(unitId) {
 }
 
 /* ============================================================
+   STORE LAYOUT
+   ============================================================
+   The overview staff actually use: where each cabinet stands, and one colour
+   saying whether it is fine. Everything else is a click away. */
+
+/* Footprints as a share of the plan area. The shape says what kind of
+   installation it is — a display cabinet runs long, a cold room is a box. */
+const PLAN_SHAPES = {
+  cabinet: { w: 22, h: 14 },
+  chiller: { w: 15, h: 20 },
+  room:    { w: 20, h: 30 }
+};
+
+/* Status is never carried by colour alone: a mark repeats it for anyone who
+   cannot separate red from green. */
+const PLAN_MARKS = { ok: '✓', warn: '!', alarm: '✕', stale: '?' };
+
+let arranging = false;
+
+function planFor(unit, index) {
+  const shape = PLAN_SHAPES[unit.plan_shape] || PLAN_SHAPES.chiller;
+  const placed = unit.plan && Number.isFinite(unit.plan.x);
+  if (placed) return { x: unit.plan.x, y: unit.plan.y, ...shape };
+
+  /* Units that have never been arranged flow into rows, so a freshly added
+     freezer appears somewhere sensible instead of on top of another. */
+  const perRow = 4;
+  return {
+    x: 4 + (index % perRow) * 24,
+    y: 6 + Math.floor(index / perRow) * 32,
+    ...shape
+  };
+}
+
+function renderPlan(states) {
+  const plan = document.getElementById('plan');
+  plan.classList.toggle('editing', arranging);
+
+  plan.innerHTML = states.map((s, i) => {
+    const pos = planFor(s.unit, i);
+    return `
+      <div class="tile ${s.status}" data-unit="${s.unit.id}" tabindex="0" role="button"
+           aria-label="${escapeHtml(L(s.unit.name))}: ${statusLabel(s.status)}"
+           style="left:${pos.x}%; top:${pos.y}%; width:${pos.w}%; height:${pos.h}%">
+        <span class="tmark" aria-hidden="true">${PLAN_MARKS[s.status]}</span>
+        <span class="tname">${escapeHtml(L(s.unit.name))}</span>
+        ${s.last ? `<span class="ttemp">${s.last.temp_c.toFixed(1)}°</span>` : ''}
+      </div>`;
+  }).join('');
+
+  document.getElementById('planLegend').innerHTML = ['ok', 'warn', 'alarm', 'stale']
+    .map(k => `<span><i class="${k}"></i>${statusLabel(k)}</span>`).join('');
+
+  document.getElementById('btnArrange').textContent = arranging ? t('arrangeDone') : t('arrange');
+  document.getElementById('arrangeHint').textContent = arranging ? t('arrangeHint') : '';
+}
+
+function toggleArrange() {
+  arranging = !arranging;
+  if (!arranging) saveUnits();
+  render();
+}
+
+/* One delegated pointer handler for the whole plan: press a tile to open it,
+   or drag it into place while arranging. */
+(function enablePlanInteraction() {
+  const plan = document.getElementById('plan');
+  let drag = null;
+
+  plan.addEventListener('pointerdown', e => {
+    const tile = e.target.closest('.tile');
+    if (!tile) return;
+
+    if (!arranging) { openUnit(tile.dataset.unit); return; }
+
+    const area = plan.getBoundingClientRect();
+    const box = tile.getBoundingClientRect();
+    drag = {
+      tile,
+      unitId: tile.dataset.unit,
+      /* Where inside the tile the pointer grabbed it, so it does not jump. */
+      offsetX: ((e.clientX - box.left) / area.width) * 100,
+      offsetY: ((e.clientY - box.top) / area.height) * 100,
+      w: (box.width / area.width) * 100,
+      h: (box.height / area.height) * 100
+    };
+    tile.classList.add('dragging');
+    tile.setPointerCapture(e.pointerId);
+  });
+
+  plan.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const area = plan.getBoundingClientRect();
+
+    const x = clamp(((e.clientX - area.left) / area.width) * 100 - drag.offsetX, 0, 100 - drag.w);
+    const y = clamp(((e.clientY - area.top) / area.height) * 100 - drag.offsetY, 0, 100 - drag.h);
+
+    drag.tile.style.left = x + '%';
+    drag.tile.style.top = y + '%';
+    drag.x = x;
+    drag.y = y;
+  });
+
+  plan.addEventListener('pointerup', () => {
+    if (!drag) return;
+    if (Number.isFinite(drag.x)) {
+      const unit = units.find(u => u.id === drag.unitId);
+      if (unit) unit.plan = { x: round1(drag.x), y: round1(drag.y) };
+    }
+    drag.tile.classList.remove('dragging');
+    drag = null;
+  });
+
+  /* Keyboard equivalent, so the plan is not mouse-only. */
+  plan.addEventListener('keydown', e => {
+    const tile = e.target.closest('.tile');
+    if (!tile) return;
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!arranging) openUnit(tile.dataset.unit);
+      return;
+    }
+
+    if (!arranging) return;
+    const step = e.shiftKey ? 5 : 1;
+    const move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!move) return;
+
+    e.preventDefault();
+    const unit = units.find(u => u.id === tile.dataset.unit);
+    if (!unit) return;
+
+    const i = units.indexOf(unit);
+    const pos = planFor(unit, i);
+    unit.plan = {
+      x: round1(clamp(pos.x + move[0], 0, 100 - pos.w)),
+      y: round1(clamp(pos.y + move[1], 0, 100 - pos.h))
+    };
+    render();
+    document.querySelector(`.tile[data-unit="${unit.id}"]`).focus();
+  });
+})();
+
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+function round1(v) { return Math.round(v * 10) / 10; }
+
+/* ============================================================
    PRODUCT CATEGORIES AND UNITS
    ============================================================ */
 
@@ -1223,6 +1460,14 @@ function openUnitForm(id) {
     <input type="text" id="uDevice" value="${escapeHtml(u.device_id || '')}" placeholder="24E124136D000123">
     <div class="caption">${t('deviceHint')}</div>
 
+    <label for="uShape">${t('planShape')}</label>
+    <select id="uShape" style="width:100%">
+      ${['cabinet', 'chiller', 'room'].map(k => `
+        <option value="${k}" ${(u.plan_shape || 'chiller') === k ? 'selected' : ''}>
+          ${t('shape' + k.charAt(0).toUpperCase() + k.slice(1))}
+        </option>`).join('')}
+    </select>
+
     <label>${t('thCategories')}</label>
     <div class="caption" style="margin-top:0">${t('categoriesHint')}</div>
     <div id="uCategories">
@@ -1307,6 +1552,7 @@ function readUnitForm() {
     department: document.getElementById('uDept').value.trim(),
     device_id: document.getElementById('uDevice').value.trim(),
     tolerance_c: Number(document.getElementById('uTolerance').value) || 0,
+    plan_shape: document.getElementById('uShape').value,
     category_ids: [...document.querySelectorAll('#uCategories input:checked')].map(i => i.value),
     override: override ? {
       min_c: Number(document.getElementById('uMin').value),
@@ -1926,6 +2172,7 @@ function buildDemoData() {
 
   const demoUnits = [
     { id: 'fr1', device_id: '24E124136D000101',
+      plan_shape: 'cabinet', plan: { x: 31, y: 10 },
       name: { el: 'Βιτρίνα κατεψυγμένων 1', en: 'Frozen display cabinet 1' },
       department: { el: 'Κατεψυγμένα', en: 'Frozen foods' },
       category_ids: ['cat_frozen'], tolerance_c: 3,
@@ -1933,6 +2180,7 @@ function buildDemoData() {
                 last_verification: '2026-03-14', next_verification: '2027-03-14' } },
 
     { id: 'fr2', device_id: '24E124136D000102',
+      plan_shape: 'room', plan: { x: 4, y: 20 },
       name: { el: 'Θάλαμος κατάψυξης', en: 'Freezer cold room' },
       department: { el: 'Αποθήκη', en: 'Storage' },
       category_ids: ['cat_frozen'], tolerance_c: 0,
@@ -1941,6 +2189,7 @@ function buildDemoData() {
 
     /* Holds fresh meat and poultry together, so 4 °C binds rather than 7 °C. */
     { id: 'ch1', device_id: '24E124136D000201',
+      plan_shape: 'chiller', plan: { x: 60, y: 8 },
       name: { el: 'Ψυγείο κρεάτων', en: 'Meat chiller' },
       department: { el: 'Κρεοπωλείο', en: 'Butchery' },
       category_ids: ['cat_meat', 'cat_poultry'], tolerance_c: 0,
@@ -1948,6 +2197,7 @@ function buildDemoData() {
                 last_verification: '2026-02-02', next_verification: '2027-02-02' } },
 
     { id: 'ch2', device_id: '24E124136D000202',
+      plan_shape: 'chiller', plan: { x: 79, y: 8 },
       name: { el: 'Ψυγείο πουλερικών', en: 'Poultry chiller' },
       department: { el: 'Κρεοπωλείο', en: 'Butchery' },
       category_ids: ['cat_poultry'], tolerance_c: 0,
@@ -1955,6 +2205,7 @@ function buildDemoData() {
                 last_verification: '2026-02-02', next_verification: '2027-02-02' } },
 
     { id: 'ch3', device_id: '24E124136D000203',
+      plan_shape: 'chiller', plan: { x: 60, y: 52 },
       name: { el: 'Ψυγείο κιμά', en: 'Minced meat chiller' },
       department: { el: 'Κρεοπωλείο', en: 'Butchery' },
       category_ids: ['cat_minced'], tolerance_c: 0,
@@ -1962,6 +2213,7 @@ function buildDemoData() {
                 last_verification: '2025-08-20', next_verification: '2026-08-20' } },
 
     { id: 'ch4', device_id: '24E124136D000301',
+      plan_shape: 'cabinet', plan: { x: 31, y: 56 },
       name: { el: 'Βιτρίνα αλιευμάτων', en: 'Fish display counter' },
       department: { el: 'Ιχθυοπωλείο', en: 'Fishmonger' },
       category_ids: ['cat_fish'], tolerance_c: 0,
@@ -1971,6 +2223,7 @@ function buildDemoData() {
     /* Manufacturer specifies stricter than the general rule, so this unit
        departs from its category — with the reason on the record. */
     { id: 'ch5', device_id: '24E124136D000401',
+      plan_shape: 'chiller', plan: { x: 79, y: 52 },
       name: { el: 'Ψυγείο γαλακτοκομικών', en: 'Dairy chiller' },
       department: { el: 'Γαλακτοκομικά', en: 'Dairy' },
       category_ids: ['cat_dairy'], tolerance_c: 0,
@@ -2021,6 +2274,10 @@ function buildDemoData() {
    START
    ============================================================ */
 async function refresh() {
+  /* Rebuilding the plan while someone is dragging a cabinet across it would
+     yank the tile out from under the pointer. */
+  if (arranging) return;
+
   try {
     await loadData();
     render();
