@@ -138,9 +138,53 @@ the periodic verification records required by **EN 13486** need to be kept per
 device — which is what the sensor register in the app is for. Loggers without
 that conformity risk having their data rejected at inspection.
 
+## Alarm delivery
+
+Alarms escalate on a ladder and are re-sent until someone acts:
+
+| Step | Default | Behaviour |
+| --- | --- | --- |
+| Level 1 | immediately | Recipients registered at level 1 (shift supervisors) |
+| Level 2 | after 20 min | Recipients registered at level 2 (store management) |
+| Repeat | every 30 min | Up to 3 times per level |
+| Stop | — | Recording a corrective action ends the escalation for that deviation |
+
+Recipients are managed in the app: name, role, channel (e-mail or SMS), address
+and escalation level. Every attempt is written to a dispatch log that also
+appears in the compliance report, so the alarm to notification to corrective
+action chain can be shown as one record.
+
+There are deliberately **no quiet hours**. A freezer failing at 03:00 is exactly
+the alarm that matters, and silencing it would defeat the purpose.
+
+A loss of contact escalates like a temperature alarm. It cannot be closed with a
+corrective action, since there is no deviation to act on — it stops when the
+sensor reports again, or after the repeat limit is reached.
+
+### Where dispatch has to run
+
+The page dispatches only while a browser has it open, which is not when a
+compressor fails. **In production the escalation must run on the server.**
+`backend/Code.gs` is a working Google Apps Script implementation that does this:
+
+1. Create a spreadsheet with the sheets listed at the top of `Code.gs`
+   (`Units`, `Readings`, `Recipients`, `Actions`, `Notifications`).
+2. Extensions → Apps Script, paste `Code.gs`, fill in the constants.
+3. Deploy as a web app and put the URL in `API_URL` in `index.html`.
+4. Add a time-driven trigger running `checkAlarms` every 5 minutes.
+
+E-mail goes out through `MailApp`. SMS posts JSON to whatever gateway is set in
+`SMS_ENDPOINT`; left empty, SMS recipients are logged with status `skipped`
+rather than silently dropped. Keep `LADDER_MIN`, `REPEAT_MIN` and `MAX_REPEATS`
+in step with the matching constants in `index.html` so the app describes the
+same rules the server enforces.
+
+With that trigger in place the browser is only a viewer, and closing it changes
+nothing.
+
 ## Not built yet
 
-- Alarm delivery by e-mail, SMS or push
+- Push notifications (e-mail and SMS are implemented)
 - Multi-store hierarchy (currently a single site)
 - Server-side storage of the full one-year history; the app reads whatever the
   endpoint returns and keeps corrective actions in the browser

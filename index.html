@@ -202,6 +202,27 @@ textarea { min-height: 80px; resize: vertical; }
   </table></div>
 </div>
 
+<div class="card">
+  <h2 id="hNotify"></h2>
+  <div class="section-sub" id="sNotify"></div>
+  <div class="notice demo no-print" id="notifyWarning"></div>
+
+  <h3 id="hRecipients"></h3>
+  <div class="table-wrap"><table class="wide">
+    <thead><tr id="thRecipients"></tr></thead>
+    <tbody id="recipientRows"></tbody>
+  </table></div>
+  <div class="toolbar no-print" style="margin-bottom:0">
+    <button onclick="openRecipientForm()" id="btnAddRecipient"></button>
+  </div>
+
+  <h3 id="hDispatchLog"></h3>
+  <div class="table-wrap"><table class="wide">
+    <thead><tr id="thDispatch"></tr></thead>
+    <tbody id="dispatchRows"></tbody>
+  </table></div>
+</div>
+
 <!-- Compliance report, laid out for printing to PDF -->
 <div class="card" id="report"></div>
 
@@ -242,6 +263,17 @@ const REFRESH_INTERVAL_S = 60;
 
 /* Records must be kept for at least one year — Reg. (EC) 37/2005 Art. 2(2). */
 const RETENTION_DAYS = 365;
+
+/* Escalation ladder for alarm delivery, in minutes from the moment a unit
+   enters an alarm state. Index 0 is level 1, index 1 is level 2, and so on;
+   recipients are notified at the level they are registered for. */
+const NOTIFY_LADDER_MIN = [0, 20];
+
+/* An unacknowledged alarm is re-sent this often, at most this many times per
+   level. Recording a corrective action stops the escalation. Deliberately no
+   quiet hours: a freezer failure at 03:00 is exactly the alarm that matters. */
+const NOTIFY_REPEAT_MIN = 30;
+const NOTIFY_MAX_REPEATS = 3;
 
 /* ============================================================
    TRANSLATIONS / ΜΕΤΑΦΡΑΣΕΙΣ
@@ -325,6 +357,22 @@ const I18N = {
     sign1: 'Υπεύθυνος ασφάλειας τροφίμων – υπογραφή και ημερομηνία',
     sign2: 'Θεώρηση – υπογραφή και ημερομηνία',
 
+    hNotify: 'Ειδοποιήσεις',
+    sNotify: 'Κλιμάκωση: επίπεδο 1 μετά από {l1} λεπτά, επίπεδο 2 μετά από {l2} λεπτά. Επανάληψη κάθε {rep} λεπτά, έως {max} φορές ανά επίπεδο ή έως την καταχώριση διορθωτικής ενέργειας.',
+    recipients: 'Παραλήπτες', dispatchLog: 'Ιστορικό αποστολών',
+    thRole: 'Ρόλος', thChannel: 'Κανάλι', thAddress: 'Διεύθυνση', thLevel: 'Επίπεδο',
+    thName: 'Ονοματεπώνυμο', thSent: 'Απεστάλη', thRecipient: 'Παραλήπτης', thCause: 'Αιτία',
+    addRecipient: 'Προσθήκη παραλήπτη', editRecipient: 'Επεξεργασία παραλήπτη',
+    deleteRecipient: 'Διαγραφή', confirmDelete: 'Να διαγραφεί ο παραλήπτης {name};',
+    channelEmail: 'Email', channelSms: 'SMS',
+    level1: 'Επίπεδο 1 – υπεύθυνος βάρδιας', level2: 'Επίπεδο 2 – διεύθυνση καταστήματος',
+    noRecipients: 'Δεν έχουν οριστεί παραλήπτες.', noDispatches: 'Καμία αποστολή στην επιλεγμένη περίοδο.',
+    sent: 'Απεστάλη', simulated: 'Προσομοίωση', failed: 'Αποτυχία',
+    causeAlarm: 'Συναγερμός θερμοκρασίας', causeStale: 'Απώλεια επικοινωνίας',
+    notifyWarning: 'Σε λειτουργία επίδειξης οι ειδοποιήσεις καταγράφονται χωρίς να αποστέλλονται. Στην παραγωγή η αποστολή πρέπει να εκτελείται από τον διακομιστή, ώστε να λειτουργεί και με κλειστό τον φυλλομετρητή.',
+    kpiSent: 'Ειδοποιήσεις',
+    notificationsSection: 'Ιστορικό ειδοποιήσεων',
+    validationRecipient: 'Συμπληρώστε ονοματεπώνυμο και διεύθυνση.',
     unitMin: '{n} λεπτά', unitMin1: '1 λεπτό',
     unitHour: '{n} ώρες', unitHour1: '1 ώρα',
     unitDay: '{n} ημέρες', unitDay1: '1 ημέρα'
@@ -408,6 +456,22 @@ const I18N = {
     sign1: 'Food safety manager – signature and date',
     sign2: 'Verified by – signature and date',
 
+    hNotify: 'Notifications',
+    sNotify: 'Escalation: level 1 after {l1} minutes, level 2 after {l2} minutes. Repeated every {rep} minutes, up to {max} times per level or until a corrective action is recorded.',
+    recipients: 'Recipients', dispatchLog: 'Dispatch log',
+    thRole: 'Role', thChannel: 'Channel', thAddress: 'Address', thLevel: 'Level',
+    thName: 'Name', thSent: 'Sent', thRecipient: 'Recipient', thCause: 'Cause',
+    addRecipient: 'Add recipient', editRecipient: 'Edit recipient',
+    deleteRecipient: 'Delete', confirmDelete: 'Delete recipient {name}?',
+    channelEmail: 'Email', channelSms: 'SMS',
+    level1: 'Level 1 – shift supervisor', level2: 'Level 2 – store management',
+    noRecipients: 'No recipients configured.', noDispatches: 'No dispatches in the selected period.',
+    sent: 'Sent', simulated: 'Simulated', failed: 'Failed',
+    causeAlarm: 'Temperature alarm', causeStale: 'Loss of contact',
+    notifyWarning: 'In demo mode notifications are logged but not sent. In production dispatch must run on the server so that it keeps working with no browser open.',
+    kpiSent: 'Notifications',
+    notificationsSection: 'Notification log',
+    validationRecipient: 'Please fill in both a name and an address.',
     unitMin: '{n} min', unitMin1: '1 min',
     unitHour: '{n} h', unitHour1: '1 h',
     unitDay: '{n} d', unitDay1: '1 d'
@@ -444,6 +508,9 @@ function setLang(next) {
 let units = [];
 let readings = [];
 let actions = loadActions();
+let recipients = loadRecipients();
+let notifyLog = loadNotifyLog();
+let notifyInFlight = false;      /* guards against double dispatch on re-render */
 
 /* ============================================================
    DATA LOADING
@@ -472,6 +539,40 @@ function loadActions() {
 function saveActions() {
   try { localStorage.setItem('thermolog.actions', JSON.stringify(actions)); }
   catch { /* private mode: actions stay in memory for this session only */ }
+}
+
+function readStore(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+
+function writeStore(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch { /* private mode: state stays in memory for this session only */ }
+}
+
+/* Recipients of alarm notifications, grouped by escalation level. */
+function loadRecipients() {
+  return readStore('thermolog.recipients', [
+    { id: 'r1', name: 'Α. Παπαδόπουλος', role: { el: 'Υπεύθυνος βάρδιας', en: 'Shift supervisor' },
+      channel: 'email', address: 'shift@example.com', level: 1 },
+    { id: 'r2', name: 'Μ. Γεωργίου', role: { el: 'Υπεύθυνος βάρδιας', en: 'Shift supervisor' },
+      channel: 'sms', address: '+357 99 000000', level: 1 },
+    { id: 'r3', name: 'Κ. Ιωάννου', role: { el: 'Διευθυντής καταστήματος', en: 'Store manager' },
+      channel: 'email', address: 'manager@example.com', level: 2 }
+  ]);
+}
+
+function saveRecipients() { writeStore('thermolog.recipients', recipients); }
+
+/* Dispatch log, capped so the browser store cannot grow without bound. */
+function loadNotifyLog() { return readStore('thermolog.notifications', []); }
+
+function saveNotifyLog() {
+  notifyLog = notifyLog.slice(-300);
+  writeStore('thermolog.notifications', notifyLog);
 }
 
 /* ============================================================
@@ -593,8 +694,10 @@ function render() {
   renderUnits(states);
   renderDeviations(states);
   renderSensors(states);
+  renderNotifications();
   renderReport(states);
   document.getElementById('updatedAt').textContent = t('updatedAt', { time: formatTime(Date.now()) });
+  processNotifications(states);
 }
 
 /* Static labels that live outside the data-driven tables. */
@@ -617,16 +720,29 @@ function renderChrome() {
   setText('hUnits', 'hUnits');   setText('sUnits', 'sUnits');
   setText('hDeviations', 'hDeviations'); setText('sDeviations', 'sDeviations');
   setText('hSensors', 'hSensors'); setText('sSensors', 'sSensors');
+  setText('hNotify', 'hNotify');
+  setText('hRecipients', 'recipients');
+  setText('hDispatchLog', 'dispatchLog');
+  setText('btnAddRecipient', 'addRecipient');
+  document.getElementById('sNotify').textContent = t('sNotify', {
+    l1: NOTIFY_LADDER_MIN[0], l2: NOTIFY_LADDER_MIN[1],
+    rep: NOTIFY_REPEAT_MIN, max: NOTIFY_MAX_REPEATS
+  });
+  const warn = document.getElementById('notifyWarning');
+  warn.textContent = t('notifyWarning');
+  warn.hidden = false;
 
   headerRow('thUnits', ['thUnit', 'thTemp', 'thLimits', 'thLast24', 'thLastReading', 'thStatus']);
   headerRow('thDeviations', ['thStart', 'thUnit', 'thDeviation', 'thDuration', 'thAction', 'thPerson']);
   headerRow('thSensors', ['thUnit', 'thSensor', 'thSerial', 'thStandard', 'thLastVerif', 'thNextVerif']);
+  headerRow('thRecipients', ['thName', 'thRole', 'thChannel', 'thAddress', 'thLevel', '']);
+  headerRow('thDispatch', ['thSent', 'thUnit', 'thCause', 'thLevel', 'thRecipient', 'thStatus']);
 }
 
 function setText(id, key) { document.getElementById(id).textContent = t(key); }
 
 function headerRow(id, keys) {
-  document.getElementById(id).innerHTML = keys.map(k => `<th>${t(k)}</th>`).join('');
+  document.getElementById(id).innerHTML = keys.map(k => `<th>${k ? t(k) : ''}</th>`).join('');
 }
 
 function renderKpis(states) {
@@ -640,7 +756,8 @@ function renderKpis(states) {
     kpi(t('kpiAlarms'), n('alarm'), n('alarm') ? 'is-alarm' : ''),
     kpi(t('kpiWarnings'), n('warn'), n('warn') ? 'is-warn' : ''),
     kpi(t('kpiStale'), n('stale'), n('stale') ? 'is-warn' : ''),
-    kpi(t('kpiPending'), pending, pending ? 'is-warn' : '')
+    kpi(t('kpiPending'), pending, pending ? 'is-warn' : ''),
+    kpi(t('kpiSent'), notifyLog.filter(n => n.at >= Date.now() - periodDays() * 24 * 3600000).length, '')
   ].join('');
 }
 
@@ -800,6 +917,221 @@ function openUnit(unitId) {
         </tr>`).join('') || `<tr><td colspan="3" class="empty">${t('noReadings')}</td></tr>`}
       </tbody>
     </table></div>`);
+}
+
+/* ============================================================
+   ALARM DELIVERY
+   ============================================================
+   The browser can only dispatch while someone has the page open, which is not
+   when a compressor fails. This engine decides *what* should be sent and keeps
+   the audit trail; in production the same rules belong on the server, and the
+   page then only displays the log it reads back. See backend/Code.gs. */
+
+/* Identifies an alarm condition across refreshes so it is not re-sent as new.
+   Deviations are keyed by their start; a silent sensor by its last reading. */
+function alarmKey(state) {
+  if (state.status === 'alarm' && state.deviation) return state.deviation.id;
+  if (state.status === 'stale') return `${state.unit.id}:stale:${state.last ? state.last.t : 0}`;
+  return null;
+}
+
+function alarmStart(state) {
+  if (state.status === 'alarm' && state.deviation) return state.deviation.start;
+  return state.last ? state.last.t + STALE_AFTER_MIN * 60000 : Date.now();
+}
+
+/* Escalation levels that are due for an alarm, taking into account what has
+   already gone out and whether a corrective action has closed it. */
+function pendingDispatches(state) {
+  const key = alarmKey(state);
+  if (!key) return [];
+
+  /* A recorded corrective action ends the escalation. */
+  if (state.deviation && actions[state.deviation.id]) return [];
+
+  const elapsed = (Date.now() - alarmStart(state)) / 60000;
+  const due = [];
+
+  NOTIFY_LADDER_MIN.forEach((afterMin, i) => {
+    const level = i + 1;
+    if (elapsed < afterMin) return;
+
+    const sentAtLevel = notifyLog.filter(n => n.key === key && n.level === level);
+    if (sentAtLevel.length >= NOTIFY_MAX_REPEATS * Math.max(1, recipientsAt(level).length)) return;
+
+    const lastAt = sentAtLevel.reduce((max, n) => Math.max(max, n.at), 0);
+    if (lastAt && (Date.now() - lastAt) / 60000 < NOTIFY_REPEAT_MIN) return;
+
+    due.push({ key, level, state });
+  });
+
+  return due;
+}
+
+function recipientsAt(level) {
+  return recipients.filter(r => Number(r.level) === level);
+}
+
+/* Sends everything that is due and records each attempt. Runs after every
+   refresh; the in-flight guard keeps a slow endpoint from being hit twice. */
+async function processNotifications(states) {
+  if (notifyInFlight) return;
+
+  const due = states.flatMap(pendingDispatches);
+  if (!due.length) return;
+
+  notifyInFlight = true;
+  try {
+    for (const item of due) {
+      for (const r of recipientsAt(item.level)) {
+        const entry = {
+          key: item.key,
+          unit_id: item.state.unit.id,
+          unit: item.state.unit.name,
+          level: item.level,
+          cause: item.state.status === 'stale' ? 'stale' : 'alarm',
+          detail: item.state.note,
+          temp_c: item.state.last ? item.state.last.temp_c : null,
+          recipient: r.name,
+          channel: r.channel,
+          address: r.address,
+          at: Date.now(),
+          status: 'simulated'
+        };
+
+        if (API_URL) {
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: 'notify',
+                unit_id: entry.unit_id,
+                alarm_key: entry.key,
+                level: entry.level,
+                cause: entry.cause,
+                channel: entry.channel,
+                address: entry.address,
+                subject: `${L(entry.unit)} – ${t(entry.cause === 'stale' ? 'causeStale' : 'causeAlarm')}`,
+                body: `${L(entry.unit)}: ${entry.detail}` +
+                      (entry.temp_c !== null ? ` (${entry.temp_c.toFixed(1)} °C)` : '')
+              })
+            });
+            entry.status = res.ok ? 'sent' : 'failed';
+          } catch {
+            entry.status = 'failed';
+          }
+        }
+
+        notifyLog.push(entry);
+      }
+    }
+    saveNotifyLog();
+    renderNotifications();
+  } finally {
+    notifyInFlight = false;
+  }
+}
+
+function renderNotifications() {
+  document.getElementById('recipientRows').innerHTML = recipients.map(r => `
+    <tr>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(L(r.role))}</td>
+      <td>${t(r.channel === 'sms' ? 'channelSms' : 'channelEmail')}</td>
+      <td class="num">${escapeHtml(r.address)}</td>
+      <td>${t('level' + r.level) || r.level}</td>
+      <td class="no-print">
+        <button class="small" onclick="openRecipientForm('${r.id}')">${t('edit')}</button>
+        <button class="small" onclick="deleteRecipient('${r.id}')">${t('deleteRecipient')}</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="6" class="empty">${t('noRecipients')}</td></tr>`;
+
+  const from = Date.now() - periodDays() * 24 * 3600000;
+  const rows = notifyLog.filter(n => n.at >= from).sort((a, b) => b.at - a.at);
+
+  document.getElementById('dispatchRows').innerHTML = rows.map(n => `
+    <tr>
+      <td class="num">${formatDateTime(n.at)}</td>
+      <td>${escapeHtml(L(n.unit))}</td>
+      <td>${t(n.cause === 'stale' ? 'causeStale' : 'causeAlarm')}
+          ${n.temp_c !== null && n.temp_c !== undefined
+            ? `<span class="note">${n.temp_c.toFixed(1)} °C</span>` : ''}</td>
+      <td class="num">${n.level}</td>
+      <td>${escapeHtml(n.recipient)}
+          <span class="note">${t(n.channel === 'sms' ? 'channelSms' : 'channelEmail')} · ${escapeHtml(n.address)}</span></td>
+      <td><span class="badge ${n.status === 'failed' ? 'alarm' : n.status === 'sent' ? 'ok' : 'stale'}">${t(n.status)}</span></td>
+    </tr>`).join('') || `<tr><td colspan="6" class="empty">${t('noDispatches')}</td></tr>`;
+}
+
+/* ------------------------------------------------------------
+   Recipient management
+   ------------------------------------------------------------ */
+function openRecipientForm(id) {
+  const r = recipients.find(x => x.id === id) ||
+            { id: '', name: '', role: '', channel: 'email', address: '', level: 1 };
+
+  showModal(`
+    <div class="modal-head">
+      <h2>${id ? t('editRecipient') : t('addRecipient')}</h2>
+      <button class="close" onclick="closeModal()" aria-label="${t('close')}">&times;</button>
+    </div>
+
+    <label for="rName">${t('thName')}</label>
+    <input type="text" id="rName" value="${escapeHtml(r.name)}">
+
+    <label for="rRole">${t('thRole')}</label>
+    <input type="text" id="rRole" value="${escapeHtml(L(r.role))}">
+
+    <label for="rChannel">${t('thChannel')}</label>
+    <select id="rChannel" style="width:100%">
+      <option value="email" ${r.channel === 'email' ? 'selected' : ''}>${t('channelEmail')}</option>
+      <option value="sms" ${r.channel === 'sms' ? 'selected' : ''}>${t('channelSms')}</option>
+    </select>
+
+    <label for="rAddress">${t('thAddress')}</label>
+    <input type="text" id="rAddress" value="${escapeHtml(r.address)}">
+
+    <label for="rLevel">${t('thLevel')}</label>
+    <select id="rLevel" style="width:100%">
+      <option value="1" ${Number(r.level) === 1 ? 'selected' : ''}>${t('level1')}</option>
+      <option value="2" ${Number(r.level) === 2 ? 'selected' : ''}>${t('level2')}</option>
+    </select>
+
+    <div class="toolbar" style="margin-bottom:0">
+      <button class="primary" onclick="saveRecipient('${id || ''}')">${t('save')}</button>
+      <button onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+
+  document.getElementById('rName').focus();
+}
+
+function saveRecipient(id) {
+  const name = document.getElementById('rName').value.trim();
+  const address = document.getElementById('rAddress').value.trim();
+  if (!name || !address) { alert(t('validationRecipient')); return; }
+
+  const data = {
+    name, address,
+    role: document.getElementById('rRole').value.trim(),
+    channel: document.getElementById('rChannel').value,
+    level: Number(document.getElementById('rLevel').value)
+  };
+
+  const existing = recipients.find(x => x.id === id);
+  if (existing) Object.assign(existing, data);
+  else recipients.push({ id: 'r' + Date.now().toString(36), ...data });
+
+  saveRecipients();
+  closeModal();
+  render();
+}
+
+function deleteRecipient(id) {
+  const r = recipients.find(x => x.id === id);
+  if (!r || !confirm(t('confirmDelete', { name: r.name }))) return;
+  recipients = recipients.filter(x => x.id !== id);
+  saveRecipients();
+  render();
 }
 
 /* ============================================================
@@ -967,6 +1299,24 @@ function renderReport(states) {
       }).join('')}</tbody>
     </table></div>
 
+    <h3>${t('notificationsSection')}</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr>
+        <th>${t('thSent')}</th><th>${t('thUnit')}</th><th>${t('thCause')}</th>
+        <th>${t('thLevel')}</th><th>${t('thRecipient')}</th><th>${t('thStatus')}</th>
+      </tr></thead>
+      <tbody>${notifyLog.filter(n => n.at >= Date.now() - days * 24 * 3600000)
+        .sort((a, b) => b.at - a.at).map(n => `<tr>
+          <td class="num">${formatDateTime(n.at)}</td>
+          <td>${escapeHtml(L(n.unit))}</td>
+          <td>${t(n.cause === 'stale' ? 'causeStale' : 'causeAlarm')}</td>
+          <td class="num">${n.level}</td>
+          <td>${escapeHtml(n.recipient)} · ${escapeHtml(n.address)}</td>
+          <td>${t(n.status)}</td>
+        </tr>`).join('') || `<tr><td colspan="6" class="empty">${t('noDispatches')}</td></tr>`}
+      </tbody>
+    </table></div>
+
     <div class="sign">
       <div>${t('sign1')}</div>
       <div>${t('sign2')}</div>
@@ -1078,7 +1428,16 @@ function escapeHtml(v) {
    853/2004 Annex III for foods of animal origin and Directive 89/108/EEC for
    quick-frozen foods; the −18 °C display cabinet carries the 3 °C tolerance the
    directive permits at retail. */
+let demoCache = null;
+
 function buildDemoData() {
+  /* Generated once per session. Regenerating on every refresh would shift each
+     deviation's start timestamp, and alarms are keyed by that start — an
+     unstable key would make every refresh look like a brand-new alarm and
+     re-notify everyone. Real readings have fixed timestamps; the demo must
+     behave the same way. */
+  if (demoCache) return demoCache;
+
   const demoUnits = [
     { id: 'fr1',
       name: { el: 'Βιτρίνα κατεψυγμένων 1', en: 'Frozen display cabinet 1' },
@@ -1171,7 +1530,8 @@ function buildDemoData() {
     }
   });
 
-  return { units: demoUnits, readings: demoReadings };
+  demoCache = { units: demoUnits, readings: demoReadings };
+  return demoCache;
 }
 
 /* ============================================================
