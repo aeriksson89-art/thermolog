@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thermolog</title>
+
+<style>
+:root {
+  --bg: #f4f5f7;
+  --card: #fff;
+  --line: #e4e7ea;
+  --text: #1b1f24;
+  --muted: #667085;
+  --ok: #12734a;      --ok-bg: #e2f4ea;
+  --warn: #96620a;    --warn-bg: #fdf2d5;
+  --alarm: #b02418;   --alarm-bg: #fce7e5;
+  --stale: #475467;   --stale-bg: #eceef1;
+  --accent: #14449c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px 20px 60px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.topbar { display: flex; align-items: flex-start; gap: 16px; }
+.topbar .grow { flex: 1; }
+h1 { font-size: 22px; margin: 0 0 2px; }
+h2 { font-size: 15px; margin: 0 0 4px; }
+h3 { font-size: 13px; margin: 18px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.sub { color: var(--muted); font-size: 13px; }
+.section-sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 20px 0; }
+button, select {
+  font: inherit;
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+button:hover, select:hover { border-color: #c4c9d0; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: #10367f; }
+button.small { padding: 4px 10px; font-size: 12px; }
+.spacer { margin-left: auto; }
+.updated { color: var(--muted); font-size: 12px; }
+#langSelect { padding: 5px 9px; font-size: 13px; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.kpi .value { font-size: 26px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.kpi.is-alarm .value { color: var(--alarm); }
+.kpi.is-warn .value { color: var(--warn); }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 20px; }
+
+#alarmBanner { display: none; }
+#alarmBanner.show { display: block; }
+.alarm-item { border-left: 3px solid var(--alarm); background: var(--alarm-bg); padding: 10px 14px; border-radius: 0 6px 6px 0; margin-bottom: 8px; }
+.alarm-item:last-child { margin-bottom: 0; }
+.alarm-item.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.alarm-item.stale { border-left-color: var(--stale); background: var(--stale-bg); }
+.alarm-item .act { margin-top: 8px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+table.wide { min-width: 800px; }
+th, td { padding: 10px; text-align: start; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+tbody tr:last-child td { border-bottom: none; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: #fafbfc; }
+td.temp { font-size: 17px; font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.unit-name { font-weight: 600; }
+.note { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+.legal { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; font-style: italic; white-space: normal; }
+
+.badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.alarm { background: var(--alarm-bg); color: var(--alarm); }
+.badge.stale { background: var(--stale-bg); color: var(--stale); }
+.badge.due { background: var(--warn-bg); color: var(--warn); }
+
+.modal { display: none; position: fixed; inset: 0; background: rgba(15,18,22,.5); padding: 20px; overflow-y: auto; }
+.modal.show { display: block; }
+.modal-content { background: var(--card); border-radius: 10px; padding: 22px; max-width: 660px; margin: 40px auto; }
+.modal-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.modal-head h2 { flex: 1; font-size: 18px; }
+.close { border: none; background: none; font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat { background: var(--bg); border-radius: 6px; padding: 10px; }
+.stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.stat .value { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.chart { width: 100%; height: 150px; display: block; }
+.caption { color: var(--muted); font-size: 12px; margin: 6px 0 18px; }
+
+label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+input[type=text], textarea {
+  font: inherit; width: 100%; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text);
+}
+textarea { min-height: 80px; resize: vertical; }
+
+.empty { color: var(--muted); padding: 18px 0; text-align: center; }
+.notice { border-radius: 6px; padding: 11px 14px; font-size: 13px; margin-bottom: 20px; }
+.notice.demo { background: #fff8e1; border: 1px solid #f2e0a4; color: #6f5300; }
+.notice.legal-basis { background: #eef3fb; border: 1px solid #cfdcf2; color: #1c3a70; }
+.notice.legal-basis ul { margin: 8px 0 0; padding-inline-start: 20px; }
+.notice.legal-basis li { margin-bottom: 3px; }
+
+#report { display: none; }
+#report.show { display: block; }
+.report-head { border-bottom: 2px solid var(--text); padding-bottom: 10px; margin-bottom: 16px; }
+.report-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 20px; font-size: 13px; margin-bottom: 20px; }
+.report-meta div span { color: var(--muted); }
+.sign { margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.sign div { border-top: 1px solid var(--text); padding-top: 6px; font-size: 12px; color: var(--muted); }
+
+@media print {
+  body { padding: 0; background: #fff; }
+  .toolbar, .kpis, #alarmBanner, .notice.demo, .no-print { display: none !important; }
+  .card { border: none; padding: 0; margin-bottom: 24px; page-break-inside: avoid; }
+  #report { display: block !important; }
+  table.wide { min-width: 0; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="grow">
+    <h1>Thermolog</h1>
+    <div class="sub" id="storeLine"></div>
+  </div>
+  <select id="langSelect" class="no-print" onchange="setLang(this.value)" aria-label="Language">
+    <option value="el">Ελληνικά</option>
+    <option value="en">English</option>
+  </select>
+</div>
+
+<div id="demoNote" class="notice demo" hidden></div>
+
+<div class="toolbar no-print">
+  <button class="primary" onclick="refresh()" id="btnRefresh"></button>
+  <select id="periodSelect" onchange="render()">
+    <option value="1"></option>
+    <option value="7" selected></option>
+    <option value="30"></option>
+  </select>
+  <button onclick="toggleReport()" id="btnReport"></button>
+  <button onclick="exportCsv()" id="btnCsv"></button>
+  <span class="spacer updated" id="updatedAt"></span>
+</div>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="card" id="alarmBanner">
+  <h2 id="hAlarms"></h2>
+  <div class="section-sub" id="sAlarms"></div>
+  <div id="alarmList"></div>
+</div>
+
+<div class="card">
+  <h2 id="hUnits"></h2>
+  <div class="section-sub" id="sUnits"></div>
+  <div class="table-wrap"><table class="wide">
+    <thead><tr id="thUnits"></tr></thead>
+    <tbody id="unitRows"></tbody>
+  </table></div>
+</div>
+
+<div class="card">
+  <h2 id="hDeviations"></h2>
+  <div class="section-sub" id="sDeviations"></div>
+  <div class="table-wrap"><table class="wide">
+    <thead><tr id="thDeviations"></tr></thead>
+    <tbody id="deviationRows"></tbody>
+  </table></div>
+</div>
+
+<div class="card">
+  <h2 id="hSensors"></h2>
+  <div class="section-sub" id="sSensors"></div>
+  <div class="table-wrap"><table class="wide">
+    <thead><tr id="thSensors"></tr></thead>
+    <tbody id="sensorRows"></tbody>
+  </table></div>
+</div>
+
+<!-- Compliance report, laid out for printing to PDF -->
+<div class="card" id="report"></div>
+
+<div class="modal" id="modal"><div class="modal-content" id="modalContent"></div></div>
+
+<script>
+/* ============================================================
+   CONFIGURATION / ΡΥΘΜΙΣΕΙΣ
+   ============================================================ */
+
+/* Endpoint of the hub/backend. Empty string starts the app in demo mode.
+   Expected responses:
+     GET  ?type=units    -> [{ id, name, department, min_c, max_c, tolerance_c,
+                               legal_ref, sensor: {...} }]
+                            Text fields may be plain strings or { el, en } objects.
+     GET  ?type=readings -> [{ unit_id, ts (ISO 8601), temp_c }]
+     POST { action: "corrective_action", unit_id, deviation_start, text, person } */
+const API_URL = '';
+
+/* Site shown in the header and on the printed report. */
+const STORE_NAME = { el: 'Υπεραγορά – Κατάστημα επίδειξης', en: 'Supermarket – Demo store' };
+const STORE_ADDRESS = { el: 'Λευκωσία, Κύπρος', en: 'Nicosia, Cyprus' };
+const OPERATOR_NAME = { el: 'Υπεύθυνος ασφάλειας τροφίμων', en: 'Food safety manager' };
+
+/* Margin to the critical limit at which a unit is flagged as a warning (°C). */
+const WARN_MARGIN_C = 1.0;
+
+/* How long a unit may stay outside its limits before the deviation is escalated
+   to an alarm (minutes). Short excursions during deliveries or defrost cycles
+   should not raise an alarm. */
+const ALARM_GRACE_MIN = 30;
+
+/* No reading for this long means the sensor has lost contact (minutes). */
+const STALE_AFTER_MIN = 60;
+
+/* Automatic refresh (seconds). 0 disables it. */
+const REFRESH_INTERVAL_S = 60;
+
+/* Records must be kept for at least one year — Reg. (EC) 37/2005 Art. 2(2). */
+const RETENTION_DAYS = 365;
+
+/* ============================================================
+   TRANSLATIONS / ΜΕΤΑΦΡΑΣΕΙΣ
+   ============================================================ */
+const I18N = {
+  el: {
+    locale: 'el-GR',
+    subtitle: 'Παρακολούθηση ψυγείων και καταψυκτών',
+    demoNote: '<strong>Λειτουργία επίδειξης.</strong> Δεν έχει οριστεί <code>API_URL</code>, οπότε εμφανίζονται προσομοιωμένα δεδομένα.',
+    refresh: 'Ανανέωση', report: 'Έκθεση συμμόρφωσης', exportCsv: 'Εξαγωγή CSV',
+    print: 'Εκτύπωση / αποθήκευση ως PDF', hide: 'Απόκρυψη',
+    period1: 'Τελευταίο 24ωρο', period7: 'Τελευταίες 7 ημέρες', period30: 'Τελευταίες 30 ημέρες',
+    updatedAt: 'Ενημερώθηκε {time}', loadFailed: 'Αποτυχία λήψης δεδομένων: {error}',
+
+    kpiUnits: 'Μονάδες', kpiAlarms: 'Συναγερμοί', kpiWarnings: 'Προειδοποιήσεις',
+    kpiStale: 'Χωρίς επικοινωνία', kpiPending: 'Εκκρεμείς ενέργειες',
+
+    hAlarms: 'Ενεργοί συναγερμοί',
+    sAlarms: 'Κάθε απόκλιση απαιτεί καταγεγραμμένη διορθωτική ενέργεια (Καν. (ΕΚ) 852/2004, αρχή 5 του HACCP).',
+    hUnits: 'Μονάδες ψύξης', sUnits: 'Επιλέξτε μονάδα για αναλυτικό ιστορικό μετρήσεων.',
+    hDeviations: 'Διορθωτικές ενέργειες', sDeviations: 'Ιστορικό αποκλίσεων και των ενεργειών που καταγράφηκαν.',
+    hSensors: 'Μητρώο αισθητήρων',
+    sSensors: 'Τα όργανα μέτρησης πρέπει να συμμορφώνονται με τα πρότυπα EN 12830 και EN 13485, με περιοδική επαλήθευση κατά EN 13486 (Καν. (ΕΚ) 37/2005, άρθρο 2).',
+
+    thUnit: 'Μονάδα', thTemp: 'Θερμοκρασία', thLimits: 'Κρίσιμα όρια', thLast24: 'Τελευταίο 24ωρο',
+    thLastReading: 'Τελευταία μέτρηση', thStatus: 'Κατάσταση',
+    thStart: 'Έναρξη', thDeviation: 'Απόκλιση', thDuration: 'Διάρκεια',
+    thAction: 'Διορθωτική ενέργεια', thPerson: 'Υπεύθυνος',
+    thSensor: 'Αισθητήρας', thSerial: 'Σειριακός αριθμός', thStandard: 'Πρότυπο',
+    thLastVerif: 'Τελευταία επαλήθευση', thNextVerif: 'Επόμενη επαλήθευση',
+
+    stOk: 'Εντάξει', stWarn: 'Προειδοποίηση', stAlarm: 'Συναγερμός', stStale: 'Χωρίς επικοινωνία',
+    overdue: 'Εκπρόθεσμη', pending: 'Εκκρεμεί', ongoing: 'σε εξέλιξη',
+    record: 'Καταχώριση', edit: 'Επεξεργασία',
+    recordAction: 'Καταχώριση διορθωτικής ενέργειας', editAction: 'Επεξεργασία διορθωτικής ενέργειας',
+
+    noUnits: 'Δεν έχουν οριστεί μονάδες.', noDeviations: 'Καμία απόκλιση στην επιλεγμένη περίοδο.',
+    noReadings: 'Καμία μέτρηση.', noReading: 'Καμία μέτρηση',
+    limitsShort: 'όρια {range}', minMax: 'ελάχ. {min} / μέγ. {max} °C',
+    range: '{min} έως {max} °C', tolerance: ' (ανοχή {tol} °C)',
+
+    noContactFor: 'Χωρίς επικοινωνία εδώ και {dur}',
+    beyondTol: 'Εκτός ανεκτού ορίου ({temp} °C) εδώ και {dur}',
+    outOfLimits: 'Εκτός ορίων εδώ και {dur}',
+    alarmAfter: ' (συναγερμός μετά από {min} λεπτά)',
+    nearLimit: 'Κοντά στο κρίσιμο όριο (περιθώριο {margin} °C)',
+
+    now: 'Τώρα', min: 'Ελάχιστη', avg: 'Μέση', max: 'Μέγιστη',
+    chartCaption: 'Τελευταίο 24ωρο. Το πράσινο πεδίο είναι το επιτρεπτό εύρος {range}.',
+    sensorHeading: 'Αισθητήρας', lastVerifShort: 'τελευταία επαλήθευση {date}',
+    latestReadings: 'Τελευταίες μετρήσεις', thTime: 'Χρόνος', thWithin: 'Εντός ορίων',
+    yes: 'Ναι', no: 'Όχι', close: 'Κλείσιμο',
+
+    actionTitle: 'Διορθωτική ενέργεια',
+    actionContext: '<strong>{unit}</strong> · ακραία τιμή {temp} °C ({limits}) · έναρξη {start} · διάρκεια {dur}',
+    actionLabel: 'Ενέργεια που πραγματοποιήθηκε',
+    actionPlaceholder: 'π.χ. Έλεγχος στεγανοποίησης πόρτας, μεταφορά προϊόντων σε εφεδρικό θάλαμο, κλήση τεχνικού συντήρησης.',
+    personLabel: 'Υπεύθυνος', personPlaceholder: 'Ονοματεπώνυμο',
+    save: 'Αποθήκευση', cancel: 'Ακύρωση',
+    validation: 'Συμπληρώστε την ενέργεια και τον υπεύθυνο.',
+    postFailed: 'Η διορθωτική ενέργεια αποθηκεύτηκε τοπικά αλλά δεν στάλθηκε:',
+
+    reportTitle: 'Έκθεση συμμόρφωσης – παρακολούθηση θερμοκρασίας',
+    reportPeriod: 'Περίοδος αναφοράς:', reportIssued: 'Ημερομηνία έκδοσης:',
+    reportResponsible: 'Υπεύθυνος:', reportRetention: 'Διατήρηση αρχείων:',
+    retentionValue: '{days} ημέρες κατ’ ελάχιστο',
+    legalBasis: 'Νομική βάση',
+    legal1: 'Καν. (ΕΚ) 852/2004 – υγιεινή τροφίμων, διαδικασίες βάσει HACCP',
+    legal2: 'Καν. (ΕΚ) 853/2004 – ειδικοί κανόνες για τρόφιμα ζωικής προέλευσης',
+    legal3: 'Καν. (ΕΚ) 37/2005 – παρακολούθηση θερμοκρασιών κατεψυγμένων τροφίμων· όργανα κατά EN 12830 / EN 13485, περιοδική επαλήθευση κατά EN 13486, τήρηση αρχείων τουλάχιστον ένα έτος',
+    legal4: 'Οδηγία 89/108/ΕΟΚ – τρόφιμα ταχείας κατάψυξης στους −18 °C, με βραχείες ανοδικές διακυμάνσεις έως 3 °C',
+    legal5: 'Κύπρος: Ο περί Τροφίμων (Έλεγχος και Πώληση) Νόμος 54(Ι)/1996 και ΚΔΠ 320/2006· αρμόδια αρχή οι Υγειονομικές Υπηρεσίες του Υπουργείου Υγείας',
+    summaryPerUnit: 'Σύνοψη ανά μονάδα',
+    thMeasurements: 'Μετρήσεις', thTimeOut: 'Χρόνος εκτός ορίων', thCompliance: 'Συμμόρφωση',
+    thMinShort: 'Ελάχ.', thAvgShort: 'Μέση', thMaxShort: 'Μέγ.', thExtreme: 'Ακραία τιμή',
+    compliant: 'Πλήρης', withDeviations: 'Με αποκλίσεις',
+    deviationsSection: 'Αποκλίσεις και διορθωτικές ενέργειες',
+    actionPending: 'Εκκρεμεί καταχώριση',
+    instrumentsSection: 'Όργανα μέτρησης', thVerification: 'Επαλήθευση',
+    noDeviationsPeriod: 'Καμία απόκλιση στην περίοδο αναφοράς.',
+    sign1: 'Υπεύθυνος ασφάλειας τροφίμων – υπογραφή και ημερομηνία',
+    sign2: 'Θεώρηση – υπογραφή και ημερομηνία',
+
+    unitMin: '{n} λεπτά', unitMin1: '1 λεπτό',
+    unitHour: '{n} ώρες', unitHour1: '1 ώρα',
+    unitDay: '{n} ημέρες', unitDay1: '1 ημέρα'
+  },
+
+  en: {
+    locale: 'en-GB',
+    subtitle: 'Refrigerator and freezer monitoring',
+    demoNote: '<strong>Demo mode.</strong> No <code>API_URL</code> is configured, so simulated data is shown.',
+    refresh: 'Refresh', report: 'Compliance report', exportCsv: 'Export CSV',
+    print: 'Print / save as PDF', hide: 'Hide',
+    period1: 'Last 24 hours', period7: 'Last 7 days', period30: 'Last 30 days',
+    updatedAt: 'Updated {time}', loadFailed: 'Could not load data: {error}',
+
+    kpiUnits: 'Units', kpiAlarms: 'Alarms', kpiWarnings: 'Warnings',
+    kpiStale: 'No contact', kpiPending: 'Pending actions',
+
+    hAlarms: 'Active alarms',
+    sAlarms: 'Every deviation requires a recorded corrective action (Reg. (EC) 852/2004, HACCP principle 5).',
+    hUnits: 'Refrigeration units', sUnits: 'Select a unit for its detailed measurement history.',
+    hDeviations: 'Corrective actions', sDeviations: 'History of deviations and the actions recorded against them.',
+    hSensors: 'Sensor register',
+    sSensors: 'Measuring instruments must comply with EN 12830 and EN 13485, with periodic verification to EN 13486 (Reg. (EC) 37/2005, Art. 2).',
+
+    thUnit: 'Unit', thTemp: 'Temperature', thLimits: 'Critical limits', thLast24: 'Last 24 hours',
+    thLastReading: 'Last reading', thStatus: 'Status',
+    thStart: 'Started', thDeviation: 'Deviation', thDuration: 'Duration',
+    thAction: 'Corrective action', thPerson: 'Responsible',
+    thSensor: 'Sensor', thSerial: 'Serial number', thStandard: 'Standard',
+    thLastVerif: 'Last verification', thNextVerif: 'Next verification',
+
+    stOk: 'OK', stWarn: 'Warning', stAlarm: 'Alarm', stStale: 'No contact',
+    overdue: 'Overdue', pending: 'Pending', ongoing: 'ongoing',
+    record: 'Record', edit: 'Edit',
+    recordAction: 'Record corrective action', editAction: 'Edit corrective action',
+
+    noUnits: 'No units configured.', noDeviations: 'No deviations in the selected period.',
+    noReadings: 'No readings.', noReading: 'No readings',
+    limitsShort: 'limits {range}', minMax: 'min {min} / max {max} °C',
+    range: '{min} to {max} °C', tolerance: ' (tolerance {tol} °C)',
+
+    noContactFor: 'No contact for {dur}',
+    beyondTol: 'Beyond permitted tolerance ({temp} °C) for {dur}',
+    outOfLimits: 'Outside limits for {dur}',
+    alarmAfter: ' (alarm after {min} minutes)',
+    nearLimit: 'Close to critical limit ({margin} °C margin)',
+
+    now: 'Now', min: 'Minimum', avg: 'Average', max: 'Maximum',
+    chartCaption: 'Last 24 hours. The green band is the permitted range {range}.',
+    sensorHeading: 'Sensor', lastVerifShort: 'last verified {date}',
+    latestReadings: 'Latest readings', thTime: 'Time', thWithin: 'Within limits',
+    yes: 'Yes', no: 'No', close: 'Close',
+
+    actionTitle: 'Corrective action',
+    actionContext: '<strong>{unit}</strong> · peak {temp} °C ({limits}) · started {start} · duration {dur}',
+    actionLabel: 'Action taken',
+    actionPlaceholder: 'e.g. Checked door seal, moved product to backup chamber, called service technician.',
+    personLabel: 'Responsible', personPlaceholder: 'Full name',
+    save: 'Save', cancel: 'Cancel',
+    validation: 'Please fill in both the action and the responsible person.',
+    postFailed: 'Corrective action saved locally but not sent:',
+
+    reportTitle: 'Compliance report – temperature monitoring',
+    reportPeriod: 'Reporting period:', reportIssued: 'Issued:',
+    reportResponsible: 'Responsible:', reportRetention: 'Record retention:',
+    retentionValue: '{days} days minimum',
+    legalBasis: 'Legal basis',
+    legal1: 'Reg. (EC) 852/2004 – food hygiene, HACCP-based procedures',
+    legal2: 'Reg. (EC) 853/2004 – specific rules for food of animal origin',
+    legal3: 'Reg. (EC) 37/2005 – temperature monitoring of quick-frozen foods; instruments to EN 12830 / EN 13485, periodic verification to EN 13486, records kept at least one year',
+    legal4: 'Directive 89/108/EEC – quick-frozen foods at −18 °C, with brief upward fluctuations of up to 3 °C',
+    legal5: 'Cyprus: Food (Control and Sale) Law 54(I)/1996 and K.D.P. 320/2006; competent authority the Health Services of the Ministry of Health',
+    summaryPerUnit: 'Summary per unit',
+    thMeasurements: 'Readings', thTimeOut: 'Time outside limits', thCompliance: 'Compliance',
+    thMinShort: 'Min', thAvgShort: 'Avg', thMaxShort: 'Max', thExtreme: 'Peak',
+    compliant: 'Full', withDeviations: 'With deviations',
+    deviationsSection: 'Deviations and corrective actions',
+    actionPending: 'Not yet recorded',
+    instrumentsSection: 'Measuring instruments', thVerification: 'Verification',
+    noDeviationsPeriod: 'No deviations in the reporting period.',
+    sign1: 'Food safety manager – signature and date',
+    sign2: 'Verified by – signature and date',
+
+    unitMin: '{n} min', unitMin1: '1 min',
+    unitHour: '{n} h', unitHour1: '1 h',
+    unitDay: '{n} d', unitDay1: '1 d'
+  }
+};
+
+let lang = (() => {
+  try { return localStorage.getItem('thermolog.lang') || 'el'; } catch { return 'el'; }
+})();
+
+/* Looks up a translation and substitutes {placeholders}. */
+function t(key, vars) {
+  let s = (I18N[lang] && I18N[lang][key]) ?? I18N.el[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, v);
+  return s;
+}
+
+/* Resolves a field that may be a plain string or a { el, en } object. */
+function L(value) {
+  if (value && typeof value === 'object') return value[lang] ?? value.el ?? value.en ?? '';
+  return value ?? '';
+}
+
+function setLang(next) {
+  lang = next;
+  try { localStorage.setItem('thermolog.lang', next); } catch { /* ignore */ }
+  document.documentElement.lang = next;
+  render();
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let units = [];
+let readings = [];
+let actions = loadActions();
+
+/* ============================================================
+   DATA LOADING
+   ============================================================ */
+async function loadData() {
+  if (!API_URL) {
+    document.getElementById('demoNote').hidden = false;
+    ({ units, readings } = buildDemoData());
+    return;
+  }
+  const [u, r] = await Promise.all([
+    fetch(API_URL + '?type=units', { cache: 'no-store' }).then(res => res.json()),
+    fetch(API_URL + '?type=readings', { cache: 'no-store' }).then(res => res.json())
+  ]);
+  units = u;
+  readings = r;
+}
+
+/* Corrective actions are kept in the browser in demo mode. With a backend
+   configured they are also posted to it. */
+function loadActions() {
+  try { return JSON.parse(localStorage.getItem('thermolog.actions') || '{}'); }
+  catch { return {}; }
+}
+
+function saveActions() {
+  try { localStorage.setItem('thermolog.actions', JSON.stringify(actions)); }
+  catch { /* private mode: actions stay in memory for this session only */ }
+}
+
+/* ============================================================
+   CALCULATIONS
+   ============================================================ */
+function periodDays() {
+  return Number(document.getElementById('periodSelect').value);
+}
+
+function readingsFor(unitId) {
+  return readings
+    .filter(r => r.unit_id === unitId)
+    .map(r => ({ unit_id: r.unit_id, t: new Date(r.ts).getTime(), temp_c: Number(r.temp_c) }))
+    .sort((a, b) => a.t - b.t);
+}
+
+function outOfRange(unit, temp) {
+  return temp < unit.min_c || temp > unit.max_c;
+}
+
+/* `tolerance_c` covers the brief upward fluctuations the law permits for
+   quick-frozen foods; beyond it a deviation is an alarm regardless of duration. */
+function beyondTolerance(unit, temp) {
+  const tol = unit.tolerance_c || 0;
+  return temp < unit.min_c - tol || temp > unit.max_c + tol;
+}
+
+/* Groups consecutive out-of-limit readings into discrete deviation events —
+   the form an inspection asks for: when it started, how long it lasted, how far
+   it went, and what was done about it. */
+function deviationEvents(unit, series, fromTs) {
+  const events = [];
+  let current = null;
+
+  series.filter(r => r.t >= fromTs).forEach(r => {
+    if (outOfRange(unit, r.temp_c)) {
+      if (!current) current = { unit, start: r.t, end: r.t, extreme: r.temp_c, beyond: false };
+      current.end = r.t;
+      current.beyond = current.beyond || beyondTolerance(unit, r.temp_c);
+      const worseHigh = r.temp_c > unit.max_c && r.temp_c > current.extreme;
+      const worseLow = r.temp_c < unit.min_c && r.temp_c < current.extreme;
+      if (worseHigh || worseLow) current.extreme = r.temp_c;
+    } else if (current) {
+      events.push(current);
+      current = null;
+    }
+  });
+
+  if (current) { current.ongoing = true; events.push(current); }
+
+  return events.map(e => ({
+    ...e,
+    id: `${unit.id}:${e.start}`,
+    minutes: Math.max(1, Math.round(((e.ongoing ? Date.now() : e.end) - e.start) / 60000))
+  }));
+}
+
+/* Overall status of a unit: ok | warn | alarm | stale. */
+function evaluate(unit) {
+  const series = readingsFor(unit.id);
+  const last = series[series.length - 1];
+
+  if (!last) return { unit, series, status: 'stale', note: t('noReading') };
+
+  const ageMin = Math.round((Date.now() - last.t) / 60000);
+  if (ageMin > STALE_AFTER_MIN) {
+    return { unit, series, last, status: 'stale', note: t('noContactFor', { dur: formatDuration(ageMin) }) };
+  }
+
+  const open = deviationEvents(unit, series, Date.now() - 48 * 3600000).find(e => e.ongoing);
+  if (open) {
+    const escalated = open.beyond || open.minutes >= ALARM_GRACE_MIN;
+    return {
+      unit, series, last, deviation: open,
+      status: escalated ? 'alarm' : 'warn',
+      note: open.beyond
+        ? t('beyondTol', { temp: open.extreme.toFixed(1), dur: formatDuration(open.minutes) })
+        : t('outOfLimits', { dur: formatDuration(open.minutes) }) +
+          (escalated ? '' : t('alarmAfter', { min: ALARM_GRACE_MIN }))
+    };
+  }
+
+  const margin = Math.min(last.temp_c - unit.min_c, unit.max_c - last.temp_c);
+  if (margin <= WARN_MARGIN_C) {
+    return { unit, series, last, status: 'warn', note: t('nearLimit', { margin: margin.toFixed(1) }) };
+  }
+
+  return { unit, series, last, status: 'ok', note: '' };
+}
+
+function statsOver(unit, series, days) {
+  const from = Date.now() - days * 24 * 3600000;
+  const window = series.filter(r => r.t >= from);
+  if (!window.length) return null;
+
+  const temps = window.map(r => r.temp_c);
+  let outMs = 0;
+  for (let i = 1; i < window.length; i++) {
+    if (outOfRange(unit, window[i].temp_c)) outMs += window[i].t - window[i - 1].t;
+  }
+
+  return {
+    count: window.length,
+    min: Math.min(...temps),
+    max: Math.max(...temps),
+    avg: temps.reduce((a, b) => a + b, 0) / temps.length,
+    outMin: Math.round(outMs / 60000)
+  };
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function render() {
+  const states = units.map(evaluate);
+  renderChrome();
+  renderKpis(states);
+  renderAlarms(states);
+  renderUnits(states);
+  renderDeviations(states);
+  renderSensors(states);
+  renderReport(states);
+  document.getElementById('updatedAt').textContent = t('updatedAt', { time: formatTime(Date.now()) });
+}
+
+/* Static labels that live outside the data-driven tables. */
+function renderChrome() {
+  document.getElementById('langSelect').value = lang;
+  document.getElementById('storeLine').textContent =
+    `${L(STORE_NAME)} · ${L(STORE_ADDRESS)} · ${t('subtitle')}`;
+  document.getElementById('demoNote').innerHTML = t('demoNote');
+
+  document.getElementById('btnRefresh').textContent = t('refresh');
+  document.getElementById('btnReport').textContent = t('report');
+  document.getElementById('btnCsv').textContent = t('exportCsv');
+
+  const opts = document.getElementById('periodSelect').options;
+  opts[0].textContent = t('period1');
+  opts[1].textContent = t('period7');
+  opts[2].textContent = t('period30');
+
+  setText('hAlarms', 'hAlarms'); setText('sAlarms', 'sAlarms');
+  setText('hUnits', 'hUnits');   setText('sUnits', 'sUnits');
+  setText('hDeviations', 'hDeviations'); setText('sDeviations', 'sDeviations');
+  setText('hSensors', 'hSensors'); setText('sSensors', 'sSensors');
+
+  headerRow('thUnits', ['thUnit', 'thTemp', 'thLimits', 'thLast24', 'thLastReading', 'thStatus']);
+  headerRow('thDeviations', ['thStart', 'thUnit', 'thDeviation', 'thDuration', 'thAction', 'thPerson']);
+  headerRow('thSensors', ['thUnit', 'thSensor', 'thSerial', 'thStandard', 'thLastVerif', 'thNextVerif']);
+}
+
+function setText(id, key) { document.getElementById(id).textContent = t(key); }
+
+function headerRow(id, keys) {
+  document.getElementById(id).innerHTML = keys.map(k => `<th>${t(k)}</th>`).join('');
+}
+
+function renderKpis(states) {
+  const n = s => states.filter(x => x.status === s).length;
+  const pending = states
+    .flatMap(s => deviationEvents(s.unit, s.series, Date.now() - periodDays() * 24 * 3600000))
+    .filter(e => !actions[e.id]).length;
+
+  document.getElementById('kpis').innerHTML = [
+    kpi(t('kpiUnits'), states.length, ''),
+    kpi(t('kpiAlarms'), n('alarm'), n('alarm') ? 'is-alarm' : ''),
+    kpi(t('kpiWarnings'), n('warn'), n('warn') ? 'is-warn' : ''),
+    kpi(t('kpiStale'), n('stale'), n('stale') ? 'is-warn' : ''),
+    kpi(t('kpiPending'), pending, pending ? 'is-warn' : '')
+  ].join('');
+}
+
+function kpi(label, value, cls) {
+  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+}
+
+function renderAlarms(states) {
+  const active = states.filter(s => s.status !== 'ok');
+  document.getElementById('alarmBanner').classList.toggle('show', active.length > 0);
+  if (!active.length) return;
+
+  document.getElementById('alarmList').innerHTML = active
+    .sort((a, b) => severity(b.status) - severity(a.status))
+    .map(s => `
+      <div class="alarm-item ${s.status}">
+        <strong>${escapeHtml(L(s.unit.name))}</strong>${s.last ? ` – ${s.last.temp_c.toFixed(1)} °C` : ''}
+        (${t('limitsShort', { range: fmtRange(s.unit) })})<br>
+        ${escapeHtml(s.note)}
+        ${s.deviation ? `<div class="act"><button class="small" onclick="openActionForm('${s.deviation.id}')">
+          ${actions[s.deviation.id] ? t('editAction') : t('recordAction')}</button></div>` : ''}
+      </div>`)
+    .join('');
+}
+
+function renderUnits(states) {
+  document.getElementById('unitRows').innerHTML = states.map(s => {
+    const st = statsOver(s.unit, s.series, 1);
+    return `
+      <tr class="clickable" onclick="openUnit('${s.unit.id}')">
+        <td><span class="unit-name">${escapeHtml(L(s.unit.name))}</span>
+            <span class="note">${escapeHtml(L(s.unit.department))}</span></td>
+        <td class="temp num">${s.last ? s.last.temp_c.toFixed(1) + ' °C' : '–'}</td>
+        <td class="num">${fmtRange(s.unit)}<span class="legal">${escapeHtml(L(s.unit.legal_ref))}</span></td>
+        <td>${sparkline(s.unit, s.series)}${st ? `<span class="note">${t('minMax', { min: st.min.toFixed(1), max: st.max.toFixed(1) })}</span>` : ''}</td>
+        <td class="num">${s.last ? formatTime(s.last.t) : '–'}</td>
+        <td><span class="badge ${s.status}">${statusLabel(s.status)}</span>
+            ${s.note ? `<span class="note">${escapeHtml(s.note)}</span>` : ''}</td>
+      </tr>`;
+  }).join('') || `<tr><td colspan="6" class="empty">${t('noUnits')}</td></tr>`;
+}
+
+function allDeviations(states) {
+  const from = Date.now() - periodDays() * 24 * 3600000;
+  return states.flatMap(s => deviationEvents(s.unit, s.series, from)).sort((a, b) => b.start - a.start);
+}
+
+function renderDeviations(states) {
+  document.getElementById('deviationRows').innerHTML = allDeviations(states).map(e => {
+    const a = actions[e.id];
+    return `
+      <tr>
+        <td class="num">${formatDateTime(e.start)}</td>
+        <td>${escapeHtml(L(e.unit.name))}</td>
+        <td class="num">${e.extreme.toFixed(1)} °C
+            <span class="note">${t('limitsShort', { range: fmtRange(e.unit) })}</span></td>
+        <td class="num">${formatDuration(e.minutes)}${e.ongoing ? `<span class="note">${t('ongoing')}</span>` : ''}</td>
+        <td>${a ? escapeHtml(a.text) : `<span class="badge warn">${t('pending')}</span>`}
+            <div class="act no-print"><button class="small" onclick="openActionForm('${e.id}')">
+              ${a ? t('edit') : t('record')}</button></div></td>
+        <td>${a ? escapeHtml(a.person) + `<span class="note">${formatDateTime(a.at)}</span>` : '–'}</td>
+      </tr>`;
+  }).join('') || `<tr><td colspan="6" class="empty">${t('noDeviations')}</td></tr>`;
+}
+
+function renderSensors(states) {
+  document.getElementById('sensorRows').innerHTML = states.map(s => {
+    const sn = s.unit.sensor || {};
+    const due = sn.next_verification && new Date(sn.next_verification).getTime() < Date.now();
+    return `
+      <tr>
+        <td>${escapeHtml(L(s.unit.name))}</td>
+        <td>${escapeHtml(sn.model || '–')}</td>
+        <td class="num">${escapeHtml(sn.serial || '–')}</td>
+        <td>${escapeHtml(sn.standard || '–')}</td>
+        <td class="num">${sn.last_verification ? formatDate(sn.last_verification) : '–'}</td>
+        <td class="num">${sn.next_verification ? formatDate(sn.next_verification) : '–'}
+            ${due ? ` <span class="badge due">${t('overdue')}</span>` : ''}</td>
+      </tr>`;
+  }).join('');
+}
+
+/* Inline SVG curve with the permitted range drawn as a band behind it. */
+function sparkline(unit, series, width = 150, height = 34) {
+  const from = Date.now() - 24 * 3600000;
+  const pts = series.filter(r => r.t >= from);
+  if (pts.length < 2) return '<span class="note">–</span>';
+
+  const temps = pts.map(p => p.temp_c);
+  const lo = Math.min(unit.min_c, ...temps);
+  const hi = Math.max(unit.max_c, ...temps);
+  const span = (hi - lo) || 1;
+  const t0 = pts[0].t;
+  const tSpan = (pts[pts.length - 1].t - t0) || 1;
+
+  const x = p => ((p.t - t0) / tSpan) * width;
+  const y = v => height - ((v - lo) / span) * height;
+  const bandTop = y(unit.max_c);
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
+      <rect x="0" y="${bandTop.toFixed(1)}" width="${width}"
+            height="${Math.max(0, y(unit.min_c) - bandTop).toFixed(1)}" fill="#e2f4ea"></rect>
+      <polyline points="${pts.map(p => `${x(p).toFixed(1)},${y(p.temp_c).toFixed(1)}`).join(' ')}"
+                fill="none" stroke="#14449c" stroke-width="1.5"
+                stroke-linejoin="round" stroke-linecap="round"></polyline>
+    </svg>`;
+}
+
+/* ============================================================
+   UNIT DETAIL
+   ============================================================ */
+function openUnit(unitId) {
+  const unit = units.find(u => u.id === unitId);
+  if (!unit) return;
+
+  const s = evaluate(unit);
+  const st = statsOver(unit, s.series, periodDays());
+  const recent = s.series.slice(-14).reverse();
+  const sn = unit.sensor || {};
+
+  showModal(`
+    <div class="modal-head">
+      <h2>${escapeHtml(L(unit.name))}</h2>
+      <span class="badge ${s.status}">${statusLabel(s.status)}</span>
+      <button class="close" onclick="closeModal()" aria-label="${t('close')}">&times;</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="label">${t('now')}</div><div class="value">${s.last ? s.last.temp_c.toFixed(1) + ' °C' : '–'}</div></div>
+      <div class="stat"><div class="label">${t('min')}</div><div class="value">${st ? st.min.toFixed(1) + ' °C' : '–'}</div></div>
+      <div class="stat"><div class="label">${t('avg')}</div><div class="value">${st ? st.avg.toFixed(1) + ' °C' : '–'}</div></div>
+      <div class="stat"><div class="label">${t('max')}</div><div class="value">${st ? st.max.toFixed(1) + ' °C' : '–'}</div></div>
+    </div>
+
+    ${sparkline(unit, s.series, 600, 150).replace('<svg', '<svg class="chart"')}
+    <div class="caption">
+      ${t('chartCaption', { range: fmtRange(unit) })} ${escapeHtml(L(unit.legal_ref))}
+    </div>
+
+    <h3>${t('sensorHeading')}</h3>
+    <div class="caption">
+      ${escapeHtml(sn.model || '–')} · ${escapeHtml(sn.serial || '–')} · ${escapeHtml(sn.standard || '–')} ·
+      ${sn.last_verification ? t('lastVerifShort', { date: formatDate(sn.last_verification) }) : '–'}
+    </div>
+
+    <h3>${t('latestReadings')}</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>${t('thTime')}</th><th>${t('thTemp')}</th><th>${t('thWithin')}</th></tr></thead>
+      <tbody>${recent.map(r => `
+        <tr>
+          <td class="num">${formatDateTime(r.t)}</td>
+          <td class="num">${r.temp_c.toFixed(1)} °C</td>
+          <td>${outOfRange(unit, r.temp_c)
+                ? `<span class="badge alarm">${t('no')}</span>`
+                : `<span class="badge ok">${t('yes')}</span>`}</td>
+        </tr>`).join('') || `<tr><td colspan="3" class="empty">${t('noReadings')}</td></tr>`}
+      </tbody>
+    </table></div>`);
+}
+
+/* ============================================================
+   CORRECTIVE ACTIONS
+   ============================================================ */
+function findDeviation(id) {
+  const unitId = id.split(':')[0];
+  const unit = units.find(u => u.id === unitId);
+  if (!unit) return null;
+  return deviationEvents(unit, readingsFor(unitId), 0).find(e => e.id === id) || null;
+}
+
+function openActionForm(id) {
+  const e = findDeviation(id);
+  if (!e) return;
+  const existing = actions[id] || { text: '', person: '' };
+
+  showModal(`
+    <div class="modal-head">
+      <h2>${t('actionTitle')}</h2>
+      <button class="close" onclick="closeModal()" aria-label="${t('close')}">&times;</button>
+    </div>
+
+    <div class="caption">${t('actionContext', {
+      unit: escapeHtml(L(e.unit.name)),
+      temp: e.extreme.toFixed(1),
+      limits: t('limitsShort', { range: fmtRange(e.unit) }),
+      start: formatDateTime(e.start),
+      dur: formatDuration(e.minutes)
+    })}</div>
+
+    <label for="actionText">${t('actionLabel')}</label>
+    <textarea id="actionText" placeholder="${t('actionPlaceholder')}">${escapeHtml(existing.text)}</textarea>
+
+    <label for="actionPerson">${t('personLabel')}</label>
+    <input type="text" id="actionPerson" value="${escapeHtml(existing.person)}" placeholder="${t('personPlaceholder')}">
+
+    <div class="toolbar" style="margin-bottom:0">
+      <button class="primary" onclick="saveAction('${id}')">${t('save')}</button>
+      <button onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+
+  document.getElementById('actionText').focus();
+}
+
+async function saveAction(id) {
+  const text = document.getElementById('actionText').value.trim();
+  const person = document.getElementById('actionPerson').value.trim();
+  if (!text || !person) { alert(t('validation')); return; }
+
+  const e = findDeviation(id);
+  actions[id] = { text, person, at: Date.now() };
+  saveActions();
+
+  if (API_URL && e) {
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'corrective_action',
+          unit_id: e.unit.id,
+          deviation_start: new Date(e.start).toISOString(),
+          text, person
+        })
+      });
+    } catch (err) {
+      console.error(t('postFailed'), err);
+    }
+  }
+
+  closeModal();
+  render();
+}
+
+/* ============================================================
+   COMPLIANCE REPORT
+   ============================================================ */
+function toggleReport() {
+  const el = document.getElementById('report');
+  el.classList.toggle('show');
+  if (el.classList.contains('show')) el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderReport(states) {
+  const days = periodDays();
+  const from = new Date(Date.now() - days * 24 * 3600000);
+  const devs = allDeviations(states);
+
+  document.getElementById('report').innerHTML = `
+    <div class="report-head">
+      <h2>${t('reportTitle')}</h2>
+      <div class="sub">${escapeHtml(L(STORE_NAME))} · ${escapeHtml(L(STORE_ADDRESS))}</div>
+    </div>
+
+    <div class="report-meta">
+      <div><span>${t('reportPeriod')}</span><br>${formatDate(from)} – ${formatDate(new Date())}</div>
+      <div><span>${t('reportIssued')}</span><br>${formatDateTime(Date.now())}</div>
+      <div><span>${t('reportResponsible')}</span><br>${escapeHtml(L(OPERATOR_NAME))}</div>
+      <div><span>${t('reportRetention')}</span><br>${t('retentionValue', { days: RETENTION_DAYS })}</div>
+    </div>
+
+    <div class="notice legal-basis">
+      <strong>${t('legalBasis')}</strong>
+      <ul>${[1, 2, 3, 4, 5].map(i => `<li>${t('legal' + i)}</li>`).join('')}</ul>
+    </div>
+
+    <h3>${t('summaryPerUnit')}</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr>
+        <th>${t('thUnit')}</th><th>${t('thLimits')}</th><th>${t('thMinShort')}</th>
+        <th>${t('thAvgShort')}</th><th>${t('thMaxShort')}</th><th>${t('thMeasurements')}</th>
+        <th>${t('thTimeOut')}</th><th>${t('thCompliance')}</th>
+      </tr></thead>
+      <tbody>${states.map(s => {
+        const st = statsOver(s.unit, s.series, days);
+        if (!st) return `<tr><td>${escapeHtml(L(s.unit.name))}</td><td colspan="7" class="empty">${t('noReading')}</td></tr>`;
+        const ok = st.outMin === 0;
+        return `<tr>
+          <td>${escapeHtml(L(s.unit.name))}<span class="note">${escapeHtml(L(s.unit.department))}</span></td>
+          <td class="num">${fmtRange(s.unit)}</td>
+          <td class="num">${st.min.toFixed(1)} °C</td>
+          <td class="num">${st.avg.toFixed(1)} °C</td>
+          <td class="num">${st.max.toFixed(1)} °C</td>
+          <td class="num">${st.count}</td>
+          <td class="num">${st.outMin ? formatDuration(st.outMin) : '–'}</td>
+          <td><span class="badge ${ok ? 'ok' : 'warn'}">${ok ? t('compliant') : t('withDeviations')}</span></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+
+    <h3>${t('deviationsSection')}</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr>
+        <th>${t('thStart')}</th><th>${t('thUnit')}</th><th>${t('thExtreme')}</th>
+        <th>${t('thDuration')}</th><th>${t('thAction')}</th><th>${t('thPerson')}</th>
+      </tr></thead>
+      <tbody>${devs.map(e => {
+        const a = actions[e.id];
+        return `<tr>
+          <td class="num">${formatDateTime(e.start)}</td>
+          <td>${escapeHtml(L(e.unit.name))}</td>
+          <td class="num">${e.extreme.toFixed(1)} °C</td>
+          <td class="num">${formatDuration(e.minutes)}</td>
+          <td>${a ? escapeHtml(a.text) : t('actionPending')}</td>
+          <td>${a ? escapeHtml(a.person) : '–'}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="6" class="empty">${t('noDeviationsPeriod')}</td></tr>`}</tbody>
+    </table></div>
+
+    <h3>${t('instrumentsSection')}</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr>
+        <th>${t('thUnit')}</th><th>${t('thSensor')}</th><th>${t('thSerial')}</th>
+        <th>${t('thStandard')}</th><th>${t('thVerification')}</th>
+      </tr></thead>
+      <tbody>${states.map(s => {
+        const sn = s.unit.sensor || {};
+        return `<tr>
+          <td>${escapeHtml(L(s.unit.name))}</td>
+          <td>${escapeHtml(sn.model || '–')}</td>
+          <td class="num">${escapeHtml(sn.serial || '–')}</td>
+          <td>${escapeHtml(sn.standard || '–')}</td>
+          <td class="num">${sn.last_verification ? formatDate(sn.last_verification) : '–'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+
+    <div class="sign">
+      <div>${t('sign1')}</div>
+      <div>${t('sign2')}</div>
+    </div>
+
+    <div class="toolbar no-print" style="margin-bottom:0">
+      <button class="primary" onclick="window.print()">${t('print')}</button>
+      <button onclick="toggleReport()">${t('hide')}</button>
+    </div>`;
+}
+
+function exportCsv() {
+  const days = periodDays();
+  const header = ['unit', 'department', 'min_limit_c', 'max_limit_c',
+                  'min_c', 'avg_c', 'max_c', 'readings', 'minutes_out_of_limits',
+                  'status', 'sensor', 'serial', 'standard'];
+
+  const rows = units.map(unit => {
+    const s = evaluate(unit);
+    const st = statsOver(unit, s.series, days);
+    const sn = unit.sensor || {};
+    return [
+      L(unit.name), L(unit.department), unit.min_c, unit.max_c,
+      st ? st.min.toFixed(1) : '', st ? st.avg.toFixed(1) : '', st ? st.max.toFixed(1) : '',
+      st ? st.count : 0, st ? st.outMin : 0,
+      statusLabel(s.status), sn.model || '', sn.serial || '', sn.standard || ''
+    ];
+  });
+
+  const csv = [header, ...rows]
+    .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+    .join('\r\n');
+
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `thermolog-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function showModal(html) {
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function statusLabel(s) {
+  return { ok: t('stOk'), warn: t('stWarn'), alarm: t('stAlarm'), stale: t('stStale') }[s] || s;
+}
+
+function severity(s) { return { ok: 0, stale: 1, warn: 2, alarm: 3 }[s] || 0; }
+
+function fmtRange(unit) {
+  return t('range', { min: unit.min_c, max: unit.max_c }) +
+         (unit.tolerance_c ? t('tolerance', { tol: unit.tolerance_c }) : '');
+}
+
+/* Greek distinguishes singular from plural for every time unit, so durations
+   are composed from individually pluralised parts rather than one template. */
+function plural(n, key) {
+  return t(n === 1 ? key + '1' : key, { n });
+}
+
+function formatDuration(min) {
+  if (min < 60) return plural(min, 'unitMin');
+
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h < 24) return m ? `${plural(h, 'unitHour')} ${plural(m, 'unitMin')}` : plural(h, 'unitHour');
+
+  const d = Math.floor(h / 24), rh = h % 24;
+  return rh ? `${plural(d, 'unitDay')} ${plural(rh, 'unitHour')}` : plural(d, 'unitDay');
+}
+
+function locale() { return I18N[lang].locale; }
+
+function formatTime(ms) {
+  return new Date(ms).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(v) {
+  return new Date(v).toLocaleDateString(locale(), { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+function formatDateTime(v) {
+  return new Date(v).toLocaleString(locale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ============================================================
+   DEMO DATA
+   ============================================================
+   Seven units typical of a supermarket. Critical limits follow Reg. (EC)
+   853/2004 Annex III for foods of animal origin and Directive 89/108/EEC for
+   quick-frozen foods; the −18 °C display cabinet carries the 3 °C tolerance the
+   directive permits at retail. */
+function buildDemoData() {
+  const demoUnits = [
+    { id: 'fr1',
+      name: { el: 'Βιτρίνα κατεψυγμένων 1', en: 'Frozen display cabinet 1' },
+      department: { el: 'Κατεψυγμένα', en: 'Frozen foods' },
+      min_c: -30, max_c: -18, tolerance_c: 3,
+      legal_ref: { el: 'Οδηγία 89/108/ΕΟΚ – −18 °C, ανοχή έως 3 °C σε βιτρίνες λιανικής',
+                   en: 'Directive 89/108/EEC – −18 °C, up to 3 °C tolerance in retail display cabinets' },
+      sensor: { model: 'Milesight EM500-PT100', serial: 'TL-24-0117', standard: 'EN 12830 · class 1',
+                last_verification: '2026-03-14', next_verification: '2027-03-14' } },
+
+    { id: 'fr2',
+      name: { el: 'Θάλαμος κατάψυξης', en: 'Freezer cold room' },
+      department: { el: 'Αποθήκη', en: 'Storage' },
+      min_c: -30, max_c: -18, tolerance_c: 0,
+      legal_ref: { el: 'Καν. (ΕΚ) 37/2005 – καταγραφικό όργανο υποχρεωτικό σε θαλάμους αποθήκευσης',
+                   en: 'Reg. (EC) 37/2005 – recording instrument required in storage rooms' },
+      sensor: { model: 'Milesight EM500-PT100', serial: 'TL-24-0118', standard: 'EN 12830 · class 1',
+                last_verification: '2026-03-14', next_verification: '2027-03-14' } },
+
+    { id: 'ch1',
+      name: { el: 'Ψυγείο νωπών κρεάτων', en: 'Fresh meat chiller' },
+      department: { el: 'Κρεοπωλείο', en: 'Butchery' },
+      min_c: 0, max_c: 7, tolerance_c: 0,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – νωπό κρέας έως 7 °C',
+                   en: 'Reg. (EC) 853/2004, Annex III – fresh meat up to 7 °C' },
+      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0201', standard: 'EN 13485',
+                last_verification: '2026-02-02', next_verification: '2027-02-02' } },
+
+    { id: 'ch2',
+      name: { el: 'Ψυγείο πουλερικών', en: 'Poultry chiller' },
+      department: { el: 'Κρεοπωλείο', en: 'Butchery' },
+      min_c: 0, max_c: 4, tolerance_c: 0,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – κρέας πουλερικών έως 4 °C',
+                   en: 'Reg. (EC) 853/2004, Annex III – poultry meat up to 4 °C' },
+      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0202', standard: 'EN 13485',
+                last_verification: '2026-02-02', next_verification: '2027-02-02' } },
+
+    { id: 'ch3',
+      name: { el: 'Ψυγείο κιμά', en: 'Minced meat chiller' },
+      department: { el: 'Κρεοπωλείο', en: 'Butchery' },
+      min_c: 0, max_c: 2, tolerance_c: 0,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – κιμάς έως 2 °C',
+                   en: 'Reg. (EC) 853/2004, Annex III – minced meat up to 2 °C' },
+      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0203', standard: 'EN 13485',
+                last_verification: '2025-08-20', next_verification: '2026-08-20' } },
+
+    { id: 'ch4',
+      name: { el: 'Βιτρίνα αλιευμάτων', en: 'Fish display counter' },
+      department: { el: 'Ιχθυοπωλείο', en: 'Fishmonger' },
+      min_c: -1, max_c: 2, tolerance_c: 0,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – θερμοκρασία τηκόμενου πάγου',
+                   en: 'Reg. (EC) 853/2004, Annex III – temperature of melting ice' },
+      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0301', standard: 'EN 13485',
+                last_verification: '2026-02-02', next_verification: '2027-02-02' } },
+
+    { id: 'ch5',
+      name: { el: 'Ψυγείο γαλακτοκομικών', en: 'Dairy chiller' },
+      department: { el: 'Γαλακτοκομικά', en: 'Dairy' },
+      min_c: 0, max_c: 6, tolerance_c: 0,
+      legal_ref: { el: 'Καν. (ΕΚ) 852/2004 – σύμφωνα με τις οδηγίες του παρασκευαστή',
+                   en: 'Reg. (EC) 852/2004 – as specified by the manufacturer' },
+      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0401', standard: 'EN 13485',
+                last_verification: '2026-02-02', next_verification: '2027-02-02' } }
+  ];
+
+  const now = Date.now();
+  const stepMs = 30 * 60000;
+  const points = 30 * 48;            /* 30 days at half-hour resolution */
+  const demoReadings = [];
+
+  demoUnits.forEach(unit => {
+    const mid = (unit.min_c + unit.max_c) / 2;
+    const amplitude = (unit.max_c - unit.min_c) / 6;
+
+    for (let i = points; i >= 0; i--) {
+      const t = now - i * stepMs;
+
+      /* Scenario 1: the minced meat chiller lost contact three hours ago. */
+      if (unit.id === 'ch3' && t > now - 3 * 3600000) continue;
+
+      let temp = mid + Math.sin(i / 9) * amplitude + (Math.random() - 0.5) * amplitude * 0.6;
+
+      /* Scenario 2: a short excursion five days ago during a delivery. */
+      if (unit.id === 'ch1' && i > 240 && i < 244) temp = unit.max_c + 1.4;
+
+      /* Scenario 3: the frozen display cabinet is drifting upward right now. */
+      if (unit.id === 'fr1' && i < 6) temp = unit.max_c + (6 - i) * 0.9;
+
+      demoReadings.push({ unit_id: unit.id, ts: new Date(t).toISOString(), temp_c: Number(temp.toFixed(1)) });
+    }
+  });
+
+  return { units: demoUnits, readings: demoReadings };
+}
+
+/* ============================================================
+   START
+   ============================================================ */
+async function refresh() {
+  try {
+    await loadData();
+    render();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('updatedAt').textContent = t('loadFailed', { error: err.message });
+  }
+}
+
+document.documentElement.lang = lang;
+refresh();
+if (REFRESH_INTERVAL_S > 0) setInterval(refresh, REFRESH_INTERVAL_S * 1000);
+</script>
+
+</body>
+</html>
