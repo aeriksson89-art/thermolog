@@ -97,7 +97,7 @@ td.temp { font-size: 17px; font-weight: 600; }
 .plan {
   position: relative;
   width: 100%;
-  height: 400px;
+  height: 620px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background-color: #fbfcfd;
@@ -130,6 +130,12 @@ td.temp { font-size: 17px; font-weight: 600; }
 
 .tile .tname { font-size: 12px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
 .tile .ttemp { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* A dairy wall is a row of narrow sections; the label has to shrink with it. */
+.tile.compact { padding: 4px 3px; gap: 0; }
+.tile.compact .tname { font-size: 10px; }
+.tile.compact .ttemp { font-size: 12px; }
+.tile.compact .tmark { font-size: 10px; top: 2px; left: 3px; }
+
 .tile .thandle {
   position: absolute;
   right: 0;
@@ -713,6 +719,7 @@ async function loadData() {
   }
 
   units = units.map(resolveLimits);
+  indexReadings();
 }
 
 function saveUnits() {
@@ -857,11 +864,27 @@ function periodDays() {
   return Number(document.getElementById('periodSelect').value);
 }
 
+/* readingsFor() is called several times per unit on every render — status,
+   statistics, sparkline, deviations. Scanning the whole history each time is
+   fine for seven units and not for forty, so the readings are indexed once
+   when they load. */
+let readingIndex = new Map();
+
+function indexReadings() {
+  readingIndex = new Map();
+
+  readings.forEach(r => {
+    const list = readingIndex.get(r.unit_id);
+    const point = { unit_id: r.unit_id, t: new Date(r.ts).getTime(), temp_c: Number(r.temp_c) };
+    if (list) list.push(point);
+    else readingIndex.set(r.unit_id, [point]);
+  });
+
+  readingIndex.forEach(list => list.sort((a, b) => a.t - b.t));
+}
+
 function readingsFor(unitId) {
-  return readings
-    .filter(r => r.unit_id === unitId)
-    .map(r => ({ unit_id: r.unit_id, t: new Date(r.ts).getTime(), temp_c: Number(r.temp_c) }))
-    .sort((a, b) => a.t - b.t);
+  return readingIndex.get(unitId) || [];
 }
 
 function outOfRange(unit, temp) {
@@ -1263,7 +1286,7 @@ function renderPlan(states) {
   plan.innerHTML = states.map((s, i) => {
     const pos = planFor(s.unit, i);
     return `
-      <div class="tile ${s.status}" data-unit="${s.unit.id}" tabindex="0" role="button"
+      <div class="tile ${s.status}${pos.w < 11 ? ' compact' : ''}" data-unit="${s.unit.id}" tabindex="0" role="button"
            aria-label="${escapeHtml(L(s.unit.name))}: ${statusLabel(s.status)}"
            style="left:${pos.x}%; top:${pos.y}%; width:${pos.w}%; height:${pos.h}%">
         <span class="tmark" aria-hidden="true">${PLAN_MARKS[s.status]}</span>
@@ -2207,6 +2230,8 @@ function buildDemoData() {
      behave the same way. */
   if (demoCache) return demoCache;
 
+  const ref853 = { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' };
+
   /* Critical limits live here, once, with the provision they come from. Units
      inherit them; nobody types a temperature limit into a cabinet by hand. */
   const demoCategories = [
@@ -2214,124 +2239,193 @@ function buildDemoData() {
       min_c: -30, max_c: -18,
       legal_ref: { el: 'Οδηγία 89/108/ΕΟΚ – −18 °C', en: 'Directive 89/108/EEC – −18 °C' } },
 
-    { id: 'cat_meat', name: { el: 'Νωπό κρέας', en: 'Fresh meat' },
-      min_c: 0, max_c: 7,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
+    /* Legally −18 °C like any quick-frozen food, but manufacturers specify
+       colder to keep the texture, so it gets its own category rather than an
+       override on every cabinet. */
+    { id: 'cat_icecream', name: { el: 'Παγωτά', en: 'Ice cream' },
+      min_c: -30, max_c: -20,
+      legal_ref: { el: 'Οδηγία 89/108/ΕΟΚ και προδιαγραφή παρασκευαστή',
+                   en: 'Directive 89/108/EEC and manufacturer specification' } },
 
-    { id: 'cat_poultry', name: { el: 'Πουλερικά', en: 'Poultry' },
-      min_c: 0, max_c: 4,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
+    { id: 'cat_meat', name: { el: 'Νωπό κρέας', en: 'Fresh meat' }, min_c: 0, max_c: 7, legal_ref: ref853 },
+    { id: 'cat_poultry', name: { el: 'Πουλερικά', en: 'Poultry' }, min_c: 0, max_c: 4, legal_ref: ref853 },
+    { id: 'cat_minced', name: { el: 'Κιμάς', en: 'Minced meat' }, min_c: 0, max_c: 2, legal_ref: ref853 },
+    { id: 'cat_offal', name: { el: 'Εντόσθια', en: 'Offal' }, min_c: 0, max_c: 3, legal_ref: ref853 },
 
-    { id: 'cat_minced', name: { el: 'Κιμάς', en: 'Minced meat' },
-      min_c: 0, max_c: 2,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
-
-    { id: 'cat_offal', name: { el: 'Εντόσθια', en: 'Offal' },
-      min_c: 0, max_c: 3,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
-
-    { id: 'cat_fish', name: { el: 'Αλιεύματα', en: 'Fishery products' },
-      min_c: -1, max_c: 2,
+    { id: 'cat_fish', name: { el: 'Αλιεύματα', en: 'Fishery products' }, min_c: -1, max_c: 2,
       legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – θερμοκρασία τηκόμενου πάγου',
                    en: 'Reg. (EC) 853/2004, Annex III – temperature of melting ice' } },
 
-    { id: 'cat_dairy', name: { el: 'Γαλακτοκομικά', en: 'Dairy' },
-      min_c: 0, max_c: 6,
+    { id: 'cat_deli', name: { el: 'Αλλαντικά και προϊόντα κρέατος', en: 'Charcuterie and meat products' },
+      min_c: 0, max_c: 4, legal_ref: ref853 },
+
+    { id: 'cat_dairy', name: { el: 'Γαλακτοκομικά', en: 'Dairy' }, min_c: 0, max_c: 6,
       legal_ref: { el: 'Καν. (ΕΚ) 852/2004 – οδηγίες παρασκευαστή',
-                   en: 'Reg. (EC) 852/2004 – manufacturer instructions' } }
+                   en: 'Reg. (EC) 852/2004 – manufacturer instructions' } },
+
+    { id: 'cat_ready', name: { el: 'Έτοιμα φαγητά', en: 'Ready meals' }, min_c: 0, max_c: 4,
+      legal_ref: { el: 'Καν. (ΕΚ) 852/2004 – βάσει ανάλυσης κινδύνων',
+                   en: 'Reg. (EC) 852/2004 – on a hazard analysis basis' } }
   ];
 
-  const demoUnits = [
-    { id: 'fr1', device_id: '24E124136D000101',
-      plan_shape: 'cabinet', plan: { x: 31, y: 10 },
-      name: { el: 'Βιτρίνα κατεψυγμένων 1', en: 'Frozen display cabinet 1' },
-      department: { el: 'Κατεψυγμένα', en: 'Frozen foods' },
-      category_ids: ['cat_frozen'], tolerance_c: 3,
-      sensor: { model: 'Milesight EM500-PT100', serial: 'TL-24-0117', standard: 'EN 12830 · class 1',
-                last_verification: '2026-03-14', next_verification: '2027-03-14' } },
+  categories = demoCategories;
 
-    { id: 'fr2', device_id: '24E124136D000102',
-      plan_shape: 'room', plan: { x: 4, y: 20 },
-      name: { el: 'Θάλαμος κατάψυξης', en: 'Freezer cold room' },
-      department: { el: 'Αποθήκη', en: 'Storage' },
-      category_ids: ['cat_frozen'], tolerance_c: 0,
-      sensor: { model: 'Milesight EM500-PT100', serial: 'TL-24-0118', standard: 'EN 12830 · class 1',
-                last_verification: '2026-03-14', next_verification: '2027-03-14' } },
+  /* A hypermarket's refrigeration, laid out by zone the way it is actually
+     installed: long walls of narrow multideck sections, island freezers on the
+     floor, serve-over counters at the departments, cold rooms behind. */
+  const demoUnits = [];
+  let seq = 0;
 
-    /* Holds fresh meat and poultry together, so 4 °C binds rather than 7 °C. */
-    { id: 'ch1', device_id: '24E124136D000201',
-      plan_shape: 'chiller', plan: { x: 60, y: 8 },
-      name: { el: 'Ψυγείο κρεάτων', en: 'Meat chiller' },
-      department: { el: 'Κρεοπωλείο', en: 'Butchery' },
-      category_ids: ['cat_meat', 'cat_poultry'], tolerance_c: 0,
-      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0201', standard: 'EN 13485',
-                last_verification: '2026-02-02', next_verification: '2027-02-02' } },
+  function sensor(standard, verified, next) {
+    seq++;
+    return {
+      model: standard.indexOf('12830') >= 0 ? 'Milesight EM500-PT100' : 'Elsys ERS-Eye',
+      serial: 'TL-26-' + String(seq).padStart(4, '0'),
+      standard: standard,
+      last_verification: verified,
+      next_verification: next
+    };
+  }
 
-    { id: 'ch2', device_id: '24E124136D000202',
-      plan_shape: 'chiller', plan: { x: 79, y: 8 },
-      name: { el: 'Ψυγείο πουλερικών', en: 'Poultry chiller' },
-      department: { el: 'Κρεοπωλείο', en: 'Butchery' },
-      category_ids: ['cat_poultry'], tolerance_c: 0,
-      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0202', standard: 'EN 13485',
-                last_verification: '2026-02-02', next_verification: '2027-02-02' } },
+  /* One run of identical cabinets along a wall. */
+  function run(o) {
+    for (let i = 1; i <= o.count; i++) {
+      const n = (o.from || 1) + i - 1;
+      demoUnits.push({
+        id: o.prefix + n,
+        device_id: '24E124136D' + String(1000 + demoUnits.length).padStart(6, '0'),
+        name: { el: o.el + ' ' + n, en: o.en + ' ' + n },
+        department: o.department,
+        category_ids: o.categories,
+        tolerance_c: o.tolerance || 0,
+        plan_shape: o.shape || 'chiller',
+        plan: { x: round1(o.x + (i - 1) * o.step), y: o.y, w: o.w, h: o.h },
+        sensor: sensor(o.standard, o.verified, o.next)
+      });
+    }
+  }
 
-    { id: 'ch3', device_id: '24E124136D000203',
-      plan_shape: 'chiller', plan: { x: 60, y: 52 },
-      name: { el: 'Ψυγείο κιμά', en: 'Minced meat chiller' },
-      department: { el: 'Κρεοπωλείο', en: 'Butchery' },
-      category_ids: ['cat_minced'], tolerance_c: 0,
-      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0203', standard: 'EN 13485',
-                last_verification: '2025-08-20', next_verification: '2026-08-20' } },
+  function one(o) {
+    demoUnits.push({
+      id: o.id,
+      device_id: '24E124136D' + String(1000 + demoUnits.length).padStart(6, '0'),
+      name: o.name,
+      department: o.department,
+      category_ids: o.categories,
+      tolerance_c: o.tolerance || 0,
+      plan_shape: o.shape || 'chiller',
+      plan: { x: o.x, y: o.y, w: o.w, h: o.h },
+      sensor: sensor(o.standard, o.verified, o.next)
+    });
+  }
 
-    { id: 'ch4', device_id: '24E124136D000301',
-      plan_shape: 'cabinet', plan: { x: 31, y: 56 },
-      name: { el: 'Βιτρίνα αλιευμάτων', en: 'Fish display counter' },
-      department: { el: 'Ιχθυοπωλείο', en: 'Fishmonger' },
-      category_ids: ['cat_fish'], tolerance_c: 0,
-      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0301', standard: 'EN 13485',
-                last_verification: '2026-02-02', next_verification: '2027-02-02' } },
+  const DAIRY = { el: 'Γαλακτοκομικά', en: 'Dairy' };
+  const FROZEN = { el: 'Κατεψυγμένα', en: 'Frozen foods' };
+  const BUTCHERY = { el: 'Κρεοπωλείο', en: 'Butchery' };
+  const BACK = { el: 'Αποθήκη', en: 'Back of house' };
 
-    /* Manufacturer specifies stricter than the general rule, so this unit
-       departs from its category — with the reason on the record. */
-    { id: 'ch5', device_id: '24E124136D000401',
-      plan_shape: 'chiller', plan: { x: 79, y: 52 },
-      name: { el: 'Ψυγείο γαλακτοκομικών', en: 'Dairy chiller' },
-      department: { el: 'Γαλακτοκομικά', en: 'Dairy' },
-      category_ids: ['cat_dairy'], tolerance_c: 0,
-      override: { min_c: 0, max_c: 4,
-                  reason: { el: 'Προδιαγραφή παρασκευαστή για νωπά τυριά',
-                            en: 'Manufacturer specification for fresh cheese' } },
-      sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0401', standard: 'EN 13485',
-                last_verification: '2026-02-02', next_verification: '2027-02-02' } }
-  ];
+  /* Dairy wall — twenty multideck sections in two runs. Open multidecks, so
+     3 °C of tolerance for the air curtain a customer walks through. */
+  run({ prefix: 'da', count: 10, from: 1, el: 'Γαλακτ.', en: 'Dairy', department: DAIRY,
+        categories: ['cat_dairy'], tolerance_c: 0, shape: 'chiller',
+        x: 3, y: 4, step: 9.4, w: 8.6, h: 10,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  run({ prefix: 'da', count: 10, from: 11, el: 'Γαλακτ.', en: 'Dairy', department: DAIRY,
+        categories: ['cat_dairy'], shape: 'chiller',
+        x: 3, y: 16, step: 9.4, w: 8.6, h: 10,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  /* Upright frozen display, separate from the ice cream islands: same −18 °C
+     rule, different installation and a different tolerance. */
+  run({ prefix: 'fz', count: 6, el: 'Κατεψ.', en: 'Frozen', department: FROZEN,
+        categories: ['cat_frozen'], tolerance: 3, shape: 'cabinet',
+        x: 3, y: 30, step: 9.4, w: 8.6, h: 10,
+        standard: 'EN 12830 · class 1', verified: '2026-03-14', next: '2027-03-14' });
+
+  /* Island freezers for ice cream, held colder than the legal minimum. */
+  run({ prefix: 'ic', count: 4, el: 'Παγωτά', en: 'Ice cream', department: FROZEN,
+        categories: ['cat_icecream'], tolerance: 3, shape: 'cabinet',
+        x: 3, y: 44, step: 11.5, w: 10, h: 11,
+        standard: 'EN 12830 · class 1', verified: '2026-03-14', next: '2027-03-14' });
+
+  /* Serve-over counters and the departments behind them. */
+  one({ id: 'meat1', name: { el: 'Πάγκος κρεάτων', en: 'Meat counter' }, department: BUTCHERY,
+        categories: ['cat_meat', 'cat_offal'], shape: 'cabinet', x: 66, y: 30, w: 16, h: 10,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  one({ id: 'deli1', name: { el: 'Πάγκος αλλαντικών', en: 'Deli counter' },
+        department: { el: 'Αλλαντικά', en: 'Delicatessen' },
+        categories: ['cat_deli'], shape: 'cabinet', x: 84, y: 30, w: 15, h: 10,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  one({ id: 'poul1', name: { el: 'Ψυγείο πουλερικών', en: 'Poultry chiller' }, department: BUTCHERY,
+        categories: ['cat_poultry'], x: 66, y: 44, w: 12, h: 11,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  one({ id: 'minc1', name: { el: 'Ψυγείο κιμά', en: 'Minced meat chiller' }, department: BUTCHERY,
+        categories: ['cat_minced'], x: 80, y: 44, w: 12, h: 11,
+        standard: 'EN 13485', verified: '2025-08-20', next: '2026-08-20' });
+
+  one({ id: 'fish1', name: { el: 'Ιχθυοπωλείο', en: 'Fish counter' },
+        department: { el: 'Ιχθυοπωλείο', en: 'Fishmonger' },
+        categories: ['cat_fish'], shape: 'cabinet', x: 3, y: 59, w: 16, h: 11,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  one({ id: 'chee1', name: { el: 'Ψυγείο τυριών', en: 'Cheese chiller' },
+        department: { el: 'Τυροκομικά', en: 'Cheese' },
+        categories: ['cat_dairy'], x: 22, y: 59, w: 12, h: 11,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  one({ id: 'read1', name: { el: 'Έτοιμα φαγητά', en: 'Ready meals' },
+        department: { el: 'Έτοιμα φαγητά', en: 'Ready meals' },
+        categories: ['cat_ready'], x: 37, y: 59, w: 12, h: 11,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  /* Back of house. Storage rooms take a recording instrument under Reg. (EC)
+     37/2005 and get no display-cabinet tolerance. */
+  one({ id: 'room_fz', name: { el: 'Θάλαμος κατάψυξης', en: 'Freezer cold room' }, department: BACK,
+        categories: ['cat_frozen'], shape: 'room', x: 3, y: 75, w: 16, h: 20,
+        standard: 'EN 12830 · class 1', verified: '2026-03-14', next: '2027-03-14' });
+
+  one({ id: 'room_ch', name: { el: 'Θάλαμος συντήρησης', en: 'Chilled cold room' }, department: BACK,
+        categories: ['cat_meat', 'cat_poultry'], shape: 'room', x: 22, y: 75, w: 16, h: 20,
+        standard: 'EN 13485', verified: '2026-02-02', next: '2027-02-02' });
+
+  one({ id: 'room_ic', name: { el: 'Θάλαμος παγωτών', en: 'Ice cream store' }, department: BACK,
+        categories: ['cat_icecream'], shape: 'room', x: 41, y: 75, w: 14, h: 20,
+        standard: 'EN 12830 · class 1', verified: '2026-03-14', next: '2027-03-14' });
 
   /* Readings are generated against each unit's derived limits, so the demo
      stays consistent if a category is edited. */
-  categories = demoCategories;
   const resolved = demoUnits.map(resolveLimits);
 
   const now = Date.now();
-  const stepMs = 30 * 60000;
-  const points = 30 * 48;            /* 30 days at half-hour resolution */
+  const stepMs = 60 * 60000;
+  const points = 30 * 24;            /* 30 days at hourly resolution */
   const demoReadings = [];
 
   resolved.forEach(unit => {
     const mid = (unit.min_c + unit.max_c) / 2;
     const amplitude = (unit.max_c - unit.min_c) / 6;
+    const phase = Math.random() * 6;
 
     for (let i = points; i >= 0; i--) {
       const t = now - i * stepMs;
 
-      /* Scenario 1: the minced meat chiller lost contact three hours ago. */
-      if (unit.id === 'ch3' && t > now - 3 * 3600000) continue;
+      /* One sensor on an ice cream island stopped reporting three hours ago. */
+      if (unit.id === 'ic2' && t > now - 3 * 3600000) continue;
 
-      let temp = mid + Math.sin(i / 9) * amplitude + (Math.random() - 0.5) * amplitude * 0.6;
+      let temp = mid + Math.sin(i / 5 + phase) * amplitude + (Math.random() - 0.5) * amplitude * 0.6;
 
-      /* Scenario 2: a short excursion five days ago during a delivery. */
-      if (unit.id === 'ch1' && i > 240 && i < 244) temp = unit.max_c + 1.4;
+      /* A dairy section ran warm for a few hours during a delivery last week. */
+      if (unit.id === 'da7' && i > 160 && i < 164) temp = unit.max_c + 1.6;
 
-      /* Scenario 3: the frozen display cabinet is drifting upward right now. */
-      if (unit.id === 'fr1' && i < 6) temp = unit.max_c + (6 - i) * 0.9;
+      /* The cheese chiller sits close to its limit — a warning, not an alarm. */
+      if (unit.id === 'chee1' && i < 3) temp = unit.max_c - 0.4;
+
+      /* A frozen display cabinet is losing temperature right now. */
+      if (unit.id === 'fz3' && i < 4) temp = unit.max_c + (4 - i) * 1.4;
 
       demoReadings.push({ unit_id: unit.id, ts: new Date(t).toISOString(), temp_c: Number(temp.toFixed(1)) });
     }

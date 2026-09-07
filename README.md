@@ -11,10 +11,25 @@ and **English**, switchable from the selector in the top right.
 ## Running it
 
 Open `index.html` in a browser. With no backend configured the app starts in
-**demo mode** with 30 days of simulated data across seven units, including three
-deliberate scenarios: a frozen display cabinet drifting out of limits right now,
-a short excursion during a delivery five days ago, and a sensor that has lost
-contact.
+**demo mode** with 30 days of hourly data across a hypermarket's full
+refrigeration:
+
+| Zone | Units |
+| --- | --- |
+| Dairy wall | 20 multideck sections in two runs |
+| Frozen display | 6 upright cabinets |
+| Ice cream | 4 island freezers, held colder than the legal minimum |
+| Butchery | Serve-over counter, poultry chiller, minced meat chiller |
+| Deli, fish, cheese, ready meals | One counter each |
+| Back of house | Freezer, chilled and ice cream cold rooms |
+
+Forty units in all, with four deliberate scenarios running: a frozen display
+cabinet losing temperature right now, a dairy section that ran warm during a
+delivery last week, a sensor on an ice cream island that stopped reporting three
+hours ago, and a cheese chiller sitting close to its limit.
+
+The scale is the point. One red tile among forty is what the floor plan has to
+make obvious, and what a table of forty rows does not.
 
 ## Connecting the hub
 
