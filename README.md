@@ -21,18 +21,32 @@ contact.
 Set `API_URL` at the top of the script section to your endpoint. Text fields may
 be plain strings or `{ el, en }` objects for bilingual output.
 
+**`GET ?type=categories`**
+
+```json
+[
+  {
+    "id": "cat_poultry",
+    "name": { "el": "Πουλερικά", "en": "Poultry" },
+    "min_c": 0,
+    "max_c": 4,
+    "legal_ref": { "el": "Καν. (ΕΚ) 853/2004, Παρ. III", "en": "Reg. (EC) 853/2004, Annex III" }
+  }
+]
+```
+
 **`GET ?type=units`**
 
 ```json
 [
   {
     "id": "fr1",
+    "device_id": "24E124136D000101",
     "name": { "el": "Βιτρίνα κατεψυγμένων 1", "en": "Frozen display cabinet 1" },
     "department": { "el": "Κατεψυγμένα", "en": "Frozen foods" },
-    "min_c": -30,
-    "max_c": -18,
+    "category_ids": ["cat_frozen"],
     "tolerance_c": 3,
-    "legal_ref": { "el": "Οδηγία 89/108/ΕΟΚ …", "en": "Directive 89/108/EEC …" },
+    "override": null,
     "sensor": {
       "model": "Milesight EM500-PT100",
       "serial": "TL-24-0117",
@@ -50,15 +64,72 @@ be plain strings or `{ el, en }` objects for bilingual output.
 [{ "unit_id": "fr1", "ts": "2026-09-07T08:15:00Z", "temp_c": -19.4 }]
 ```
 
-**`POST`** — corrective actions:
+`min_c`, `max_c` and `legal_ref` are derived from `category_ids` (or from
+`override`) and are never sent by the endpoint.
+
+**`POST`** — readings from the hub, corrective actions, and configuration:
 
 ```json
+{ "action": "reading", "device_id": "24E124136D000101",
+  "ts": "2026-09-07T08:15:00Z", "temp_c": -19.4 }
+
 { "action": "corrective_action", "unit_id": "fr1",
   "deviation_start": "2026-09-07T09:02:00Z", "text": "…", "person": "…" }
+
+{ "action": "save_units", "units": [ … ] }
+{ "action": "save_categories", "categories": [ … ] }
 ```
 
 In demo mode corrective actions are kept in `localStorage` so the flow can be
 demonstrated without a backend.
+
+## Adding a unit
+
+Five steps, and only one of them happens in this app:
+
+1. **Mount the sensor.** Air temperature at the warmest point of the cabinet,
+   away from the evaporator and the door. Record where the probe sits — a
+   reading from the wrong spot is worthless as evidence.
+2. **Join it to the hub.** Enter the sensor's DevEUI and AppKey in the network
+   server (The Things Stack, ChirpStack or the vendor's cloud) and power it up.
+3. **Add the unit here.** Name, department, the DevEUI from the label, and the
+   product categories it holds. Critical limits are never typed in — they come
+   from the categories.
+4. **Point the hub at the backend**, posting
+   `{ action: "reading", device_id, ts, temp_c }`. The backend resolves
+   `device_id` to the unit; a sensor that reports before it is assigned lands in
+   the `Unmapped` sheet rather than being discarded, which is the commissioning
+   list to work through.
+5. **Verify the instrument.** EN 12830 conformity for storage rooms, and the
+   EN 13486 verification record into the sensor register.
+
+Until the first reading arrives the unit shows *awaiting first reading*, which
+is how you confirm the mapping worked.
+
+## Product categories and critical limits
+
+Critical limits are law, not local preference, so they live in one catalogue and
+every unit inherits them. When a regulation changes, or someone finds a wrong
+limit, it is corrected in one place instead of once per cabinet per store.
+
+**Where categories share a unit, the strictest bound wins.** A chiller holding
+fresh meat (7 °C) beside poultry (4 °C) is a 4 °C unit, and the app shows which
+category binds. This is the rule that most needs enforcing in software: set by
+hand, someone eventually puts 7 °C on a cabinet with chicken in it, and the
+record then certifies a breach as compliant — worse than no record at all.
+
+Selecting categories with no overlapping range (frozen plus dairy) is rejected
+as a configuration error rather than silently resolved.
+
+**Tolerance is a property of the installation, not the product.** Quick-frozen
+food may deviate by up to 3 °C in a retail display cabinet but not in a storage
+room (Directive 89/108/EEC), so tolerance is set per unit while the limits come
+from the category.
+
+**Overrides are possible and deliberately visible.** Where a manufacturer
+specifies stricter than the law, a unit may depart from its category, but the
+justification is mandatory and is printed in the compliance report. Departures
+should be possible and inconvenient, never silent.
 
 ## Settings
 

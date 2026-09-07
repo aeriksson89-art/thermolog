@@ -182,6 +182,21 @@ textarea { min-height: 80px; resize: vertical; }
     <thead><tr id="thUnits"></tr></thead>
     <tbody id="unitRows"></tbody>
   </table></div>
+  <div class="toolbar no-print" style="margin-bottom:0">
+    <button onclick="openUnitForm()" id="btnAddUnit"></button>
+  </div>
+</div>
+
+<div class="card">
+  <h2 id="hCategories"></h2>
+  <div class="section-sub" id="sCategories"></div>
+  <div class="table-wrap"><table class="wide">
+    <thead><tr id="thCategoriesRow"></tr></thead>
+    <tbody id="categoryRows"></tbody>
+  </table></div>
+  <div class="toolbar no-print" style="margin-bottom:0">
+    <button onclick="openCategoryForm()" id="btnAddCategory"></button>
+  </div>
 </div>
 
 <div class="card">
@@ -357,6 +372,33 @@ const I18N = {
     sign1: 'Υπεύθυνος ασφάλειας τροφίμων – υπογραφή και ημερομηνία',
     sign2: 'Θεώρηση – υπογραφή και ημερομηνία',
 
+    hCategories: 'Κατηγορίες προϊόντων',
+    sCategories: 'Τα κρίσιμα όρια ορίζονται εδώ μία φορά και κληρονομούνται από κάθε μονάδα. Μεταβολή της νομοθεσίας διορθώνεται σε ένα σημείο, όχι σε κάθε ψυγείο.',
+    addCategory: 'Προσθήκη κατηγορίας', editCategory: 'Επεξεργασία κατηγορίας',
+    thCategory: 'Κατηγορία', thCategories: 'Κατηγορίες προϊόντων',
+    thMinLimit: 'Ελάχιστο', thMaxLimit: 'Μέγιστο', thLegalRef: 'Νομική βάση',
+    thUsedBy: 'Μονάδες', noCategories: 'Δεν έχουν οριστεί κατηγορίες.',
+    confirmDeleteCategory: 'Να διαγραφεί η κατηγορία {name};',
+    categoryInUse: 'Η κατηγορία χρησιμοποιείται από {n} μονάδες και δεν μπορεί να διαγραφεί.',
+    validationCategory: 'Συμπληρώστε ονομασία και όρια.',
+
+    addUnit: 'Προσθήκη μονάδας', editUnit: 'Επεξεργασία μονάδας',
+    thDepartment: 'Τμήμα', thDevice: 'Αναγνωριστικό αισθητήρα', thTolerance: 'Ανοχή',
+    deviceHint: 'DevEUI ή σειριακός αριθμός από την ετικέτα του αισθητήρα. Με αυτό ο κόμβος αναγνωρίζει σε ποια μονάδα ανήκει κάθε μέτρηση.',
+    toleranceHint: 'Ανοχή σε °C. Για ταχείας κατάψυξης τρόφιμα επιτρέπονται έως 3 °C σε βιτρίνες λιανικής (Οδηγία 89/108/ΕΟΚ)· σε θαλάμους αποθήκευσης αφήστε 0.',
+    categoriesHint: 'Επιλέξτε ό,τι φυλάσσεται στη μονάδα. Όταν συνυπάρχουν κατηγορίες, δεσμεύει η αυστηρότερη.',
+    derivedLimits: 'Προκύπτοντα όρια',
+    binding: 'Δεσμεύει: {name}',
+    limitConflict: 'Ασύμβατες κατηγορίες – δεν υπάρχει κοινό εύρος θερμοκρασίας.',
+    overrideToggle: 'Απόκλιση από τα όρια της κατηγορίας',
+    overrideReason: 'Αιτιολόγηση απόκλισης',
+    overrideReasonHint: 'π.χ. αυστηρότερη προδιαγραφή παρασκευαστή. Η αιτιολόγηση εμφανίζεται στην έκθεση συμμόρφωσης.',
+    overrideBadge: 'Απόκλιση',
+    validationUnit: 'Συμπληρώστε ονομασία και τουλάχιστον μία κατηγορία.',
+    validationOverride: 'Η απόκλιση απαιτεί αιτιολόγηση.',
+    confirmDeleteUnit: 'Να διαγραφεί η μονάδα {name}; Το ιστορικό μετρήσεων παραμένει.',
+    awaitingSensor: 'Αναμονή πρώτης μέτρησης',
+
     hNotify: 'Ειδοποιήσεις',
     sNotify: 'Κλιμάκωση: επίπεδο 1 μετά από {l1} λεπτά, επίπεδο 2 μετά από {l2} λεπτά. Επανάληψη κάθε {rep} λεπτά, έως {max} φορές ανά επίπεδο ή έως την καταχώριση διορθωτικής ενέργειας.',
     recipients: 'Παραλήπτες', dispatchLog: 'Ιστορικό αποστολών',
@@ -456,6 +498,33 @@ const I18N = {
     sign1: 'Food safety manager – signature and date',
     sign2: 'Verified by – signature and date',
 
+    hCategories: 'Product categories',
+    sCategories: 'Critical limits are defined here once and inherited by every unit. A change in the law is corrected in one place, not in every cabinet.',
+    addCategory: 'Add category', editCategory: 'Edit category',
+    thCategory: 'Category', thCategories: 'Product categories',
+    thMinLimit: 'Minimum', thMaxLimit: 'Maximum', thLegalRef: 'Legal basis',
+    thUsedBy: 'Units', noCategories: 'No categories defined.',
+    confirmDeleteCategory: 'Delete category {name}?',
+    categoryInUse: 'This category is used by {n} units and cannot be deleted.',
+    validationCategory: 'Enter a name and both limits.',
+
+    addUnit: 'Add unit', editUnit: 'Edit unit',
+    thDepartment: 'Department', thDevice: 'Sensor ID', thTolerance: 'Tolerance',
+    deviceHint: 'DevEUI or serial number from the sensor label. This is how the hub knows which unit a reading belongs to.',
+    toleranceHint: 'Tolerance in °C. Quick-frozen foods may deviate by up to 3 °C in retail display cabinets (Directive 89/108/EEC); leave 0 for storage rooms.',
+    categoriesHint: 'Select what the unit holds. Where categories share a unit, the strictest one binds.',
+    derivedLimits: 'Derived limits',
+    binding: 'Binding: {name}',
+    limitConflict: 'Incompatible categories – no overlapping temperature range.',
+    overrideToggle: 'Override the category limits',
+    overrideReason: 'Justification for the override',
+    overrideReasonHint: 'e.g. a stricter manufacturer specification. The justification appears in the compliance report.',
+    overrideBadge: 'Override',
+    validationUnit: 'Enter a name and at least one category.',
+    validationOverride: 'An override requires a justification.',
+    confirmDeleteUnit: 'Delete unit {name}? Its measurement history is kept.',
+    awaitingSensor: 'Awaiting first reading',
+
     hNotify: 'Notifications',
     sNotify: 'Escalation: level 1 after {l1} minutes, level 2 after {l2} minutes. Repeated every {rep} minutes, up to {max} times per level or until a corrective action is recorded.',
     recipients: 'Recipients', dispatchLog: 'Dispatch log',
@@ -506,6 +575,7 @@ function setLang(next) {
    STATE
    ============================================================ */
 let units = [];
+let categories = [];
 let readings = [];
 let actions = loadActions();
 let recipients = loadRecipients();
@@ -518,15 +588,113 @@ let notifyInFlight = false;      /* guards against double dispatch on re-render 
 async function loadData() {
   if (!API_URL) {
     document.getElementById('demoNote').hidden = false;
-    ({ units, readings } = buildDemoData());
-    return;
+    const demo = buildDemoData();
+    readings = demo.readings;
+    /* Units and categories edited in demo mode persist in the browser, so
+       adding a freezer behaves the way it will against a real backend. */
+    categories = readStore('thermolog.categories.v1', demo.categories);
+    units = readStore('thermolog.units.v1', demo.units);
+  } else {
+    const [u, c, r] = await Promise.all([
+      fetch(API_URL + '?type=units', { cache: 'no-store' }).then(res => res.json()),
+      fetch(API_URL + '?type=categories', { cache: 'no-store' }).then(res => res.json()),
+      fetch(API_URL + '?type=readings', { cache: 'no-store' }).then(res => res.json())
+    ]);
+    units = u;
+    categories = c;
+    readings = r;
   }
-  const [u, r] = await Promise.all([
-    fetch(API_URL + '?type=units', { cache: 'no-store' }).then(res => res.json()),
-    fetch(API_URL + '?type=readings', { cache: 'no-store' }).then(res => res.json())
-  ]);
-  units = u;
-  readings = r;
+
+  units = units.map(resolveLimits);
+}
+
+function saveUnits() {
+  if (!API_URL) writeStore('thermolog.units.v1', units.map(stripDerived));
+  else postJson({ action: 'save_units', units: units.map(stripDerived) });
+}
+
+function saveCategories() {
+  if (!API_URL) writeStore('thermolog.categories.v1', categories);
+  else postJson({ action: 'save_categories', categories: categories });
+}
+
+function postJson(payload) {
+  return fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
+    .catch(err => console.error('Save failed:', err));
+}
+
+/* Derived fields are recomputed on every load; only the stored shape is saved. */
+function stripDerived(unit) {
+  const { min_c, max_c, legal_ref, limitSource, bindingMin, bindingMax, limitConflict, ...rest } = unit;
+  return rest;
+}
+
+/* ============================================================
+   LIMIT DERIVATION
+   ============================================================
+   A unit inherits its critical limits from the product categories it holds.
+   Where several categories share a cabinet the strictest bound of each side
+   wins: chilled poultry beside fresh meat is a 4 °C unit, not a 7 °C one.
+   Getting this wrong is worse than not measuring, because the record would
+   then certify a breach as compliant. */
+function resolveLimits(unit) {
+  const cats = (unit.category_ids || [])
+    .map(id => categories.find(c => c.id === id))
+    .filter(Boolean);
+
+  const resolved = { ...unit, limitSource: 'category', limitConflict: false };
+
+  if (unit.override && unit.override.reason) {
+    resolved.min_c = Number(unit.override.min_c);
+    resolved.max_c = Number(unit.override.max_c);
+    resolved.limitSource = 'override';
+  } else if (cats.length) {
+    /* Strictest lower bound is the highest minimum; strictest upper bound the
+       lowest maximum. */
+    const lower = cats.reduce((a, c) => (c.min_c > a.min_c ? c : a));
+    const upper = cats.reduce((a, c) => (c.max_c < a.max_c ? c : a));
+    resolved.min_c = lower.min_c;
+    resolved.max_c = upper.max_c;
+    resolved.bindingMin = lower;
+    resolved.bindingMax = upper;
+    resolved.limitConflict = lower.min_c > upper.max_c;
+  } else {
+    resolved.min_c = 0;
+    resolved.max_c = 0;
+    resolved.limitConflict = true;
+  }
+
+  resolved.tolerance_c = Number(unit.tolerance_c || 0);
+  resolved.legal_ref = legalRefFor(resolved, cats);
+  return resolved;
+}
+
+/* The citation shown against a unit: whichever categories actually set its
+   bounds, plus the justification when a unit departs from them. */
+function legalRefFor(unit, cats) {
+  if (unit.limitSource === 'override') {
+    const reason = unit.override.reason;
+    const pick = lng => (reason && typeof reason === 'object' ? reason[lng] : reason) || '';
+    return { el: 'Απόκλιση: ' + pick('el'), en: 'Override: ' + pick('en') };
+  }
+  const binding = [unit.bindingMin, unit.bindingMax].filter(Boolean);
+  if (!binding.length) return '';
+
+  const cite = (c, lng) => {
+    const ref = c.legal_ref;
+    return (ref && typeof ref === 'object' ? ref[lng] : ref) || '';
+  };
+  const unique = lng => binding.map(c => cite(c, lng))
+    .filter((v, i, a) => v && a.indexOf(v) === i)
+    .join(' · ');
+
+  return { el: unique('el'), en: unique('en') };
+}
+
+function categoryById(id) { return categories.find(c => c.id === id); }
+
+function unitsUsing(categoryId) {
+  return units.filter(u => (u.category_ids || []).includes(categoryId));
 }
 
 /* Corrective actions are kept in the browser in demo mode. With a backend
@@ -635,7 +803,7 @@ function evaluate(unit) {
   const series = readingsFor(unit.id);
   const last = series[series.length - 1];
 
-  if (!last) return { unit, series, status: 'stale', note: t('noReading') };
+  if (!last) return { unit, series, status: 'stale', note: t('awaitingSensor') };
 
   const ageMin = Math.round((Date.now() - last.t) / 60000);
   if (ageMin > STALE_AFTER_MIN) {
@@ -694,6 +862,7 @@ function render() {
   renderUnits(states);
   renderDeviations(states);
   renderSensors(states);
+  renderCategories();
   renderNotifications();
   renderReport(states);
   document.getElementById('updatedAt').textContent = t('updatedAt', { time: formatTime(Date.now()) });
@@ -720,6 +889,9 @@ function renderChrome() {
   setText('hUnits', 'hUnits');   setText('sUnits', 'sUnits');
   setText('hDeviations', 'hDeviations'); setText('sDeviations', 'sDeviations');
   setText('hSensors', 'hSensors'); setText('sSensors', 'sSensors');
+  setText('hCategories', 'hCategories'); setText('sCategories', 'sCategories');
+  setText('btnAddCategory', 'addCategory');
+  setText('btnAddUnit', 'addUnit');
   setText('hNotify', 'hNotify');
   setText('hRecipients', 'recipients');
   setText('hDispatchLog', 'dispatchLog');
@@ -732,7 +904,8 @@ function renderChrome() {
   warn.textContent = t('notifyWarning');
   warn.hidden = false;
 
-  headerRow('thUnits', ['thUnit', 'thTemp', 'thLimits', 'thLast24', 'thLastReading', 'thStatus']);
+  headerRow('thUnits', ['thUnit', 'thTemp', 'thLimits', 'thLast24', 'thLastReading', 'thStatus', '']);
+  headerRow('thCategoriesRow', ['thCategory', 'thMinLimit', 'thMaxLimit', 'thLegalRef', 'thUsedBy', '']);
   headerRow('thDeviations', ['thStart', 'thUnit', 'thDeviation', 'thDuration', 'thAction', 'thPerson']);
   headerRow('thSensors', ['thUnit', 'thSensor', 'thSerial', 'thStandard', 'thLastVerif', 'thNextVerif']);
   headerRow('thRecipients', ['thName', 'thRole', 'thChannel', 'thAddress', 'thLevel', '']);
@@ -791,13 +964,18 @@ function renderUnits(states) {
         <td><span class="unit-name">${escapeHtml(L(s.unit.name))}</span>
             <span class="note">${escapeHtml(L(s.unit.department))}</span></td>
         <td class="temp num">${s.last ? s.last.temp_c.toFixed(1) + ' °C' : '–'}</td>
-        <td class="num">${fmtRange(s.unit)}<span class="legal">${escapeHtml(L(s.unit.legal_ref))}</span></td>
+        <td class="num">${fmtRange(s.unit)}
+            ${limitNote(s.unit)}
+            <span class="legal">${escapeHtml(L(s.unit.legal_ref))}</span></td>
         <td>${sparkline(s.unit, s.series)}${st ? `<span class="note">${t('minMax', { min: st.min.toFixed(1), max: st.max.toFixed(1) })}</span>` : ''}</td>
         <td class="num">${s.last ? formatTime(s.last.t) : '–'}</td>
         <td><span class="badge ${s.status}">${statusLabel(s.status)}</span>
             ${s.note ? `<span class="note">${escapeHtml(s.note)}</span>` : ''}</td>
+        <td class="no-print" onclick="event.stopPropagation()">
+          <button class="small" onclick="openUnitForm('${s.unit.id}')">${t('edit')}</button>
+        </td>
       </tr>`;
-  }).join('') || `<tr><td colspan="6" class="empty">${t('noUnits')}</td></tr>`;
+  }).join('') || `<tr><td colspan="7" class="empty">${t('noUnits')}</td></tr>`;
 }
 
 function allDeviations(states) {
@@ -917,6 +1095,263 @@ function openUnit(unitId) {
         </tr>`).join('') || `<tr><td colspan="3" class="empty">${t('noReadings')}</td></tr>`}
       </tbody>
     </table></div>`);
+}
+
+/* ============================================================
+   PRODUCT CATEGORIES AND UNITS
+   ============================================================ */
+
+/* Which category actually sets a unit's bounds, or why it has none. */
+function limitNote(unit) {
+  if (unit.limitConflict) return `<span class="badge alarm">${t('limitConflict')}</span>`;
+  if (unit.limitSource === 'override') return `<span class="badge warn">${t('overrideBadge')}</span>`;
+
+  const binding = unit.bindingMax || unit.bindingMin;
+  const shared = unit.bindingMin && unit.bindingMax && unit.bindingMin.id === unit.bindingMax.id;
+  if (!binding || ((unit.category_ids || []).length < 2 && shared)) return '';
+
+  const names = [unit.bindingMin, unit.bindingMax]
+    .filter(Boolean)
+    .map(c => L(c.name))
+    .filter((n, i, a) => a.indexOf(n) === i)
+    .join(' / ');
+  return `<span class="note">${t('binding', { name: escapeHtml(names) })}</span>`;
+}
+
+function renderCategories() {
+  document.getElementById('categoryRows').innerHTML = categories.map(c => `
+    <tr>
+      <td class="unit-name">${escapeHtml(L(c.name))}</td>
+      <td class="num">${c.min_c} °C</td>
+      <td class="num">${c.max_c} °C</td>
+      <td><span class="legal" style="font-style:normal">${escapeHtml(L(c.legal_ref))}</span></td>
+      <td class="num">${unitsUsing(c.id).length}</td>
+      <td class="no-print">
+        <button class="small" onclick="openCategoryForm('${c.id}')">${t('edit')}</button>
+        <button class="small" onclick="deleteCategory('${c.id}')">${t('deleteRecipient')}</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="6" class="empty">${t('noCategories')}</td></tr>`;
+}
+
+function openCategoryForm(id) {
+  const c = categoryById(id) || { id: '', name: '', min_c: '', max_c: '', legal_ref: '' };
+
+  showModal(`
+    <div class="modal-head">
+      <h2>${id ? t('editCategory') : t('addCategory')}</h2>
+      <button class="close" onclick="closeModal()" aria-label="${t('close')}">&times;</button>
+    </div>
+
+    <label for="cName">${t('thCategory')}</label>
+    <input type="text" id="cName" value="${escapeHtml(L(c.name))}">
+
+    <label for="cMin">${t('thMinLimit')} (°C)</label>
+    <input type="text" id="cMin" value="${c.min_c}">
+
+    <label for="cMax">${t('thMaxLimit')} (°C)</label>
+    <input type="text" id="cMax" value="${c.max_c}">
+
+    <label for="cRef">${t('thLegalRef')}</label>
+    <input type="text" id="cRef" value="${escapeHtml(L(c.legal_ref))}">
+
+    <div class="toolbar" style="margin-bottom:0">
+      <button class="primary" onclick="saveCategory('${id || ''}')">${t('save')}</button>
+      <button onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+
+  document.getElementById('cName').focus();
+}
+
+function saveCategory(id) {
+  const name = document.getElementById('cName').value.trim();
+  const min_c = Number(document.getElementById('cMin').value);
+  const max_c = Number(document.getElementById('cMax').value);
+
+  if (!name || !Number.isFinite(min_c) || !Number.isFinite(max_c)) {
+    alert(t('validationCategory'));
+    return;
+  }
+
+  const data = { name, min_c, max_c, legal_ref: document.getElementById('cRef').value.trim() };
+  const existing = categoryById(id);
+  if (existing) Object.assign(existing, data);
+  else categories.push({ id: 'c' + Date.now().toString(36), ...data });
+
+  saveCategories();
+  units = units.map(resolveLimits);   /* limits are inherited, so re-derive */
+  closeModal();
+  render();
+}
+
+function deleteCategory(id) {
+  const c = categoryById(id);
+  if (!c) return;
+
+  const inUse = unitsUsing(id).length;
+  if (inUse) { alert(t('categoryInUse', { n: inUse })); return; }
+  if (!confirm(t('confirmDeleteCategory', { name: L(c.name) }))) return;
+
+  categories = categories.filter(x => x.id !== id);
+  saveCategories();
+  closeModal();
+  render();
+}
+
+/* ------------------------------------------------------------
+   Units
+   ------------------------------------------------------------ */
+function openUnitForm(id) {
+  const u = units.find(x => x.id === id) ||
+            { id: '', name: '', department: '', device_id: '', tolerance_c: 0,
+              category_ids: [], override: null, sensor: {} };
+  const sn = u.sensor || {};
+  const ov = u.override || { min_c: '', max_c: '', reason: '' };
+
+  showModal(`
+    <div class="modal-head">
+      <h2>${id ? t('editUnit') : t('addUnit')}</h2>
+      <button class="close" onclick="closeModal()" aria-label="${t('close')}">&times;</button>
+    </div>
+
+    <label for="uName">${t('thUnit')}</label>
+    <input type="text" id="uName" value="${escapeHtml(L(u.name))}">
+
+    <label for="uDept">${t('thDepartment')}</label>
+    <input type="text" id="uDept" value="${escapeHtml(L(u.department))}">
+
+    <label for="uDevice">${t('thDevice')}</label>
+    <input type="text" id="uDevice" value="${escapeHtml(u.device_id || '')}" placeholder="24E124136D000123">
+    <div class="caption">${t('deviceHint')}</div>
+
+    <label>${t('thCategories')}</label>
+    <div class="caption" style="margin-top:0">${t('categoriesHint')}</div>
+    <div id="uCategories">
+      ${categories.map(c => `
+        <label style="display:flex;gap:8px;align-items:baseline;color:var(--text);margin:6px 0">
+          <input type="checkbox" value="${c.id}" onchange="previewLimits()"
+                 ${(u.category_ids || []).includes(c.id) ? 'checked' : ''}>
+          <span>${escapeHtml(L(c.name))}
+            <span class="note" style="display:inline">${c.min_c} … ${c.max_c} °C</span></span>
+        </label>`).join('')}
+    </div>
+
+    <label for="uTolerance">${t('thTolerance')} (°C)</label>
+    <input type="text" id="uTolerance" value="${Number(u.tolerance_c || 0)}" oninput="previewLimits()">
+    <div class="caption">${t('toleranceHint')}</div>
+
+    <label style="display:flex;gap:8px;align-items:baseline;color:var(--text)">
+      <input type="checkbox" id="uOverride" ${u.override ? 'checked' : ''} onchange="previewLimits()">
+      <span>${t('overrideToggle')}</span>
+    </label>
+    <div id="overrideFields" ${u.override ? '' : 'hidden'}>
+      <label for="uMin">${t('thMinLimit')} (°C)</label>
+      <input type="text" id="uMin" value="${ov.min_c}" oninput="previewLimits()">
+      <label for="uMax">${t('thMaxLimit')} (°C)</label>
+      <input type="text" id="uMax" value="${ov.max_c}" oninput="previewLimits()">
+      <label for="uReason">${t('overrideReason')}</label>
+      <input type="text" id="uReason" value="${escapeHtml(L(ov.reason) || '')}">
+      <div class="caption">${t('overrideReasonHint')}</div>
+    </div>
+
+    <h3>${t('derivedLimits')}</h3>
+    <div class="caption" id="limitPreview"></div>
+
+    <h3>${t('thSensor')}</h3>
+    <label for="uModel">${t('thSensor')}</label>
+    <input type="text" id="uModel" value="${escapeHtml(sn.model || '')}">
+    <label for="uSerial">${t('thSerial')}</label>
+    <input type="text" id="uSerial" value="${escapeHtml(sn.serial || '')}">
+    <label for="uStandard">${t('thStandard')}</label>
+    <input type="text" id="uStandard" value="${escapeHtml(sn.standard || '')}" placeholder="EN 12830">
+    <label for="uVerified">${t('thLastVerif')}</label>
+    <input type="text" id="uVerified" value="${escapeHtml(sn.last_verification || '')}" placeholder="2026-03-14">
+
+    <div class="toolbar" style="margin-bottom:0">
+      <button class="primary" onclick="saveUnit('${id || ''}')">${t('save')}</button>
+      ${id ? `<button onclick="deleteUnit('${id}')">${t('deleteRecipient')}</button>` : ''}
+      <button onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+
+  previewLimits();
+  document.getElementById('uName').focus();
+}
+
+/* Reads the open form and shows the limits the unit would end up with, so the
+   strictest-wins rule is visible before it is saved rather than after. */
+function previewLimits() {
+  const draft = readUnitForm();
+  if (!draft) return;
+
+  document.getElementById('overrideFields').hidden = !draft.override;
+
+  const resolved = resolveLimits(draft);
+  const el = document.getElementById('limitPreview');
+
+  if (resolved.limitConflict) {
+    el.innerHTML = `<span class="badge alarm">${t('limitConflict')}</span>`;
+    return;
+  }
+
+  el.innerHTML = `<strong style="color:var(--text)">${fmtRange(resolved)}</strong>
+    ${limitNote(resolved)}
+    <span class="legal">${escapeHtml(L(resolved.legal_ref))}</span>`;
+}
+
+function readUnitForm() {
+  const nameEl = document.getElementById('uName');
+  if (!nameEl) return null;
+
+  const override = document.getElementById('uOverride').checked;
+  return {
+    name: nameEl.value.trim(),
+    department: document.getElementById('uDept').value.trim(),
+    device_id: document.getElementById('uDevice').value.trim(),
+    tolerance_c: Number(document.getElementById('uTolerance').value) || 0,
+    category_ids: [...document.querySelectorAll('#uCategories input:checked')].map(i => i.value),
+    override: override ? {
+      min_c: Number(document.getElementById('uMin').value),
+      max_c: Number(document.getElementById('uMax').value),
+      reason: document.getElementById('uReason').value.trim()
+    } : null,
+    sensor: {
+      model: document.getElementById('uModel').value.trim(),
+      serial: document.getElementById('uSerial').value.trim(),
+      standard: document.getElementById('uStandard').value.trim(),
+      last_verification: document.getElementById('uVerified').value.trim()
+    }
+  };
+}
+
+function saveUnit(id) {
+  const draft = readUnitForm();
+
+  if (!draft.name || (!draft.category_ids.length && !draft.override)) {
+    alert(t('validationUnit'));
+    return;
+  }
+  if (draft.override && !draft.override.reason) {
+    alert(t('validationOverride'));
+    return;
+  }
+
+  const existing = units.find(u => u.id === id);
+  if (existing) Object.assign(existing, draft);
+  else units.push({ id: 'u' + Date.now().toString(36), ...draft });
+
+  units = units.map(resolveLimits);
+  saveUnits();
+  closeModal();
+  render();
+}
+
+function deleteUnit(id) {
+  const u = units.find(x => x.id === id);
+  if (!u || !confirm(t('confirmDeleteUnit', { name: L(u.name) }))) return;
+
+  units = units.filter(x => x.id !== id);
+  saveUnits();
+  closeModal();
+  render();
 }
 
 /* ============================================================
@@ -1241,17 +1676,18 @@ function renderReport(states) {
     <h3>${t('summaryPerUnit')}</h3>
     <div class="table-wrap"><table class="wide">
       <thead><tr>
-        <th>${t('thUnit')}</th><th>${t('thLimits')}</th><th>${t('thMinShort')}</th>
-        <th>${t('thAvgShort')}</th><th>${t('thMaxShort')}</th><th>${t('thMeasurements')}</th>
-        <th>${t('thTimeOut')}</th><th>${t('thCompliance')}</th>
+        <th>${t('thUnit')}</th><th>${t('thLimits')}</th><th>${t('thLegalRef')}</th>
+        <th>${t('thMinShort')}</th><th>${t('thAvgShort')}</th><th>${t('thMaxShort')}</th>
+        <th>${t('thMeasurements')}</th><th>${t('thTimeOut')}</th><th>${t('thCompliance')}</th>
       </tr></thead>
       <tbody>${states.map(s => {
         const st = statsOver(s.unit, s.series, days);
-        if (!st) return `<tr><td>${escapeHtml(L(s.unit.name))}</td><td colspan="7" class="empty">${t('noReading')}</td></tr>`;
+        if (!st) return `<tr><td>${escapeHtml(L(s.unit.name))}</td><td colspan="8" class="empty">${t('noReading')}</td></tr>`;
         const ok = st.outMin === 0;
         return `<tr>
           <td>${escapeHtml(L(s.unit.name))}<span class="note">${escapeHtml(L(s.unit.department))}</span></td>
           <td class="num">${fmtRange(s.unit)}</td>
+          <td>${escapeHtml(L(s.unit.legal_ref))}</td>
           <td class="num">${st.min.toFixed(1)} °C</td>
           <td class="num">${st.avg.toFixed(1)} °C</td>
           <td class="num">${st.max.toFixed(1)} °C</td>
@@ -1454,77 +1890,108 @@ function buildDemoData() {
      behave the same way. */
   if (demoCache) return demoCache;
 
+  /* Critical limits live here, once, with the provision they come from. Units
+     inherit them; nobody types a temperature limit into a cabinet by hand. */
+  const demoCategories = [
+    { id: 'cat_frozen', name: { el: 'Κατεψυγμένα', en: 'Quick-frozen foods' },
+      min_c: -30, max_c: -18,
+      legal_ref: { el: 'Οδηγία 89/108/ΕΟΚ – −18 °C', en: 'Directive 89/108/EEC – −18 °C' } },
+
+    { id: 'cat_meat', name: { el: 'Νωπό κρέας', en: 'Fresh meat' },
+      min_c: 0, max_c: 7,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
+
+    { id: 'cat_poultry', name: { el: 'Πουλερικά', en: 'Poultry' },
+      min_c: 0, max_c: 4,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
+
+    { id: 'cat_minced', name: { el: 'Κιμάς', en: 'Minced meat' },
+      min_c: 0, max_c: 2,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
+
+    { id: 'cat_offal', name: { el: 'Εντόσθια', en: 'Offal' },
+      min_c: 0, max_c: 3,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III', en: 'Reg. (EC) 853/2004, Annex III' } },
+
+    { id: 'cat_fish', name: { el: 'Αλιεύματα', en: 'Fishery products' },
+      min_c: -1, max_c: 2,
+      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – θερμοκρασία τηκόμενου πάγου',
+                   en: 'Reg. (EC) 853/2004, Annex III – temperature of melting ice' } },
+
+    { id: 'cat_dairy', name: { el: 'Γαλακτοκομικά', en: 'Dairy' },
+      min_c: 0, max_c: 6,
+      legal_ref: { el: 'Καν. (ΕΚ) 852/2004 – οδηγίες παρασκευαστή',
+                   en: 'Reg. (EC) 852/2004 – manufacturer instructions' } }
+  ];
+
   const demoUnits = [
-    { id: 'fr1',
+    { id: 'fr1', device_id: '24E124136D000101',
       name: { el: 'Βιτρίνα κατεψυγμένων 1', en: 'Frozen display cabinet 1' },
       department: { el: 'Κατεψυγμένα', en: 'Frozen foods' },
-      min_c: -30, max_c: -18, tolerance_c: 3,
-      legal_ref: { el: 'Οδηγία 89/108/ΕΟΚ – −18 °C, ανοχή έως 3 °C σε βιτρίνες λιανικής',
-                   en: 'Directive 89/108/EEC – −18 °C, up to 3 °C tolerance in retail display cabinets' },
+      category_ids: ['cat_frozen'], tolerance_c: 3,
       sensor: { model: 'Milesight EM500-PT100', serial: 'TL-24-0117', standard: 'EN 12830 · class 1',
                 last_verification: '2026-03-14', next_verification: '2027-03-14' } },
 
-    { id: 'fr2',
+    { id: 'fr2', device_id: '24E124136D000102',
       name: { el: 'Θάλαμος κατάψυξης', en: 'Freezer cold room' },
       department: { el: 'Αποθήκη', en: 'Storage' },
-      min_c: -30, max_c: -18, tolerance_c: 0,
-      legal_ref: { el: 'Καν. (ΕΚ) 37/2005 – καταγραφικό όργανο υποχρεωτικό σε θαλάμους αποθήκευσης',
-                   en: 'Reg. (EC) 37/2005 – recording instrument required in storage rooms' },
+      category_ids: ['cat_frozen'], tolerance_c: 0,
       sensor: { model: 'Milesight EM500-PT100', serial: 'TL-24-0118', standard: 'EN 12830 · class 1',
                 last_verification: '2026-03-14', next_verification: '2027-03-14' } },
 
-    { id: 'ch1',
-      name: { el: 'Ψυγείο νωπών κρεάτων', en: 'Fresh meat chiller' },
+    /* Holds fresh meat and poultry together, so 4 °C binds rather than 7 °C. */
+    { id: 'ch1', device_id: '24E124136D000201',
+      name: { el: 'Ψυγείο κρεάτων', en: 'Meat chiller' },
       department: { el: 'Κρεοπωλείο', en: 'Butchery' },
-      min_c: 0, max_c: 7, tolerance_c: 0,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – νωπό κρέας έως 7 °C',
-                   en: 'Reg. (EC) 853/2004, Annex III – fresh meat up to 7 °C' },
+      category_ids: ['cat_meat', 'cat_poultry'], tolerance_c: 0,
       sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0201', standard: 'EN 13485',
                 last_verification: '2026-02-02', next_verification: '2027-02-02' } },
 
-    { id: 'ch2',
+    { id: 'ch2', device_id: '24E124136D000202',
       name: { el: 'Ψυγείο πουλερικών', en: 'Poultry chiller' },
       department: { el: 'Κρεοπωλείο', en: 'Butchery' },
-      min_c: 0, max_c: 4, tolerance_c: 0,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – κρέας πουλερικών έως 4 °C',
-                   en: 'Reg. (EC) 853/2004, Annex III – poultry meat up to 4 °C' },
+      category_ids: ['cat_poultry'], tolerance_c: 0,
       sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0202', standard: 'EN 13485',
                 last_verification: '2026-02-02', next_verification: '2027-02-02' } },
 
-    { id: 'ch3',
+    { id: 'ch3', device_id: '24E124136D000203',
       name: { el: 'Ψυγείο κιμά', en: 'Minced meat chiller' },
       department: { el: 'Κρεοπωλείο', en: 'Butchery' },
-      min_c: 0, max_c: 2, tolerance_c: 0,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – κιμάς έως 2 °C',
-                   en: 'Reg. (EC) 853/2004, Annex III – minced meat up to 2 °C' },
+      category_ids: ['cat_minced'], tolerance_c: 0,
       sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0203', standard: 'EN 13485',
                 last_verification: '2025-08-20', next_verification: '2026-08-20' } },
 
-    { id: 'ch4',
+    { id: 'ch4', device_id: '24E124136D000301',
       name: { el: 'Βιτρίνα αλιευμάτων', en: 'Fish display counter' },
       department: { el: 'Ιχθυοπωλείο', en: 'Fishmonger' },
-      min_c: -1, max_c: 2, tolerance_c: 0,
-      legal_ref: { el: 'Καν. (ΕΚ) 853/2004, Παρ. III – θερμοκρασία τηκόμενου πάγου',
-                   en: 'Reg. (EC) 853/2004, Annex III – temperature of melting ice' },
+      category_ids: ['cat_fish'], tolerance_c: 0,
       sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0301', standard: 'EN 13485',
                 last_verification: '2026-02-02', next_verification: '2027-02-02' } },
 
-    { id: 'ch5',
+    /* Manufacturer specifies stricter than the general rule, so this unit
+       departs from its category — with the reason on the record. */
+    { id: 'ch5', device_id: '24E124136D000401',
       name: { el: 'Ψυγείο γαλακτοκομικών', en: 'Dairy chiller' },
       department: { el: 'Γαλακτοκομικά', en: 'Dairy' },
-      min_c: 0, max_c: 6, tolerance_c: 0,
-      legal_ref: { el: 'Καν. (ΕΚ) 852/2004 – σύμφωνα με τις οδηγίες του παρασκευαστή',
-                   en: 'Reg. (EC) 852/2004 – as specified by the manufacturer' },
+      category_ids: ['cat_dairy'], tolerance_c: 0,
+      override: { min_c: 0, max_c: 4,
+                  reason: { el: 'Προδιαγραφή παρασκευαστή για νωπά τυριά',
+                            en: 'Manufacturer specification for fresh cheese' } },
       sensor: { model: 'Elsys ERS-Eye', serial: 'TL-24-0401', standard: 'EN 13485',
                 last_verification: '2026-02-02', next_verification: '2027-02-02' } }
   ];
+
+  /* Readings are generated against each unit's derived limits, so the demo
+     stays consistent if a category is edited. */
+  categories = demoCategories;
+  const resolved = demoUnits.map(resolveLimits);
 
   const now = Date.now();
   const stepMs = 30 * 60000;
   const points = 30 * 48;            /* 30 days at half-hour resolution */
   const demoReadings = [];
 
-  demoUnits.forEach(unit => {
+  resolved.forEach(unit => {
     const mid = (unit.min_c + unit.max_c) / 2;
     const amplitude = (unit.max_c - unit.min_c) / 6;
 
@@ -1546,7 +2013,7 @@ function buildDemoData() {
     }
   });
 
-  demoCache = { units: demoUnits, readings: demoReadings };
+  demoCache = { units: demoUnits, categories: demoCategories, readings: demoReadings };
   return demoCache;
 }
 
