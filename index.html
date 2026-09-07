@@ -1328,7 +1328,7 @@ function renderReport(states) {
     </div>`;
 }
 
-function exportCsv() {
+async function exportCsv() {
   const days = periodDays();
   const header = ['unit', 'department', 'min_limit_c', 'max_limit_c',
                   'min_c', 'avg_c', 'max_c', 'readings', 'minutes_out_of_limits',
@@ -1350,10 +1350,26 @@ function exportCsv() {
     .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
     .join('\r\n');
 
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const filename = `thermolog-${new Date().toISOString().slice(0, 10)}.csv`;
+  const content = '\ufeff' + csv;   /* BOM, so Greek opens correctly in Excel */
+
+  /* Published as a hosted page the frame cannot start a download itself; the
+     host mediates the save and the viewer confirms it. Opened as a local file
+     there is no host, so fall back to an object URL. */
+  const downloads = window.claude ? await window.claude.use('downloads') : null;
+  if (downloads) {
+    try {
+      await downloads.save({ filename, data: content });
+    } catch (err) {
+      if (err && err.code !== 'declined') console.error('Save failed:', err);
+    }
+    return;
+  }
+
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `thermolog-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(link.href);
 }
